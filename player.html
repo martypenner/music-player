@@ -1,0 +1,5362 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Playlist Player</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-deep: #13161c;
+        --bg-primary: #1a1d24;
+        --bg-secondary: #21252e;
+        --bg-tertiary: #2a2f3a;
+        --bg-hover: #323844;
+        --border: #2d3340;
+        --text-primary: #f5f5f7;
+        --text-secondary: #9ca3af;
+        --text-muted: #6b7280;
+        --accent: #e87c3f;
+        --accent-glow: rgba(232, 124, 63, 0.25);
+        --accent-dim: #c46a35;
+        --accent-secondary: #2dd4bf;
+        --success: #34d399;
+        --warning: #fbbf24;
+        --error: #f87171;
+        --gradient-1: linear-gradient(135deg, #e87c3f 0%, #f59e0b 100%);
+        --gradient-2: linear-gradient(135deg, #2dd4bf 0%, #22d3ee 100%);
+        --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+        --shadow-glow: 0 0 16px var(--accent-glow);
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 20px;
+        --radius-pill: 9999px;
+        --transition: 0.2s ease;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg-deep);
+        color: var(--text-primary);
+        min-height: 100vh;
+        overflow: hidden;
+        font-weight: 400;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 260px 1fr 280px;
+        grid-template-rows: 1fr auto;
+        height: 100vh;
+        gap: 0;
+        background: var(--bg-deep);
+        transition: grid-template-columns var(--transition);
+      }
+
+      .app.settings-closed {
+        grid-template-columns: 260px 1fr 0px;
+      }
+
+      .panel {
+        background: var(--bg-primary);
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: none;
+      }
+
+      .panel-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      /* Sidebar - Playlists */
+      .sidebar {
+        grid-row: span 2;
+      }
+
+      .playlist-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .playlist-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-md);
+        color: var(--text-secondary);
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 400;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: left;
+        width: 100%;
+      }
+
+      .playlist-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-primary);
+      }
+
+      .playlist-item.viewing {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-primary);
+      }
+
+      .playlist-item.playing {
+        color: var(--accent);
+      }
+
+      .playlist-item.playing.viewing {
+        background: rgba(232, 124, 63, 0.1);
+        color: var(--accent);
+      }
+
+      .playlist-item .name {
+        flex: 1;
+        cursor: pointer;
+        word-break: break-word;
+      }
+
+      .playlist-actions {
+        display: flex;
+        gap: 2px;
+        margin-left: auto;
+        flex-shrink: 0;
+      }
+
+      .playlist-btn {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-radius: 50%;
+        font-size: 14px;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .playlist-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-primary);
+      }
+
+      .playlist-btn.delete-btn:hover {
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--error);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: var(--bg-tertiary);
+        border: 1px solid transparent;
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .btn:hover {
+        background: var(--bg-hover);
+      }
+
+      .btn:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .btn-icon {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        font-size: 18px;
+        border-radius: 50%;
+      }
+
+      .btn-accent {
+        background: var(--accent);
+        border-color: transparent;
+        color: #fff;
+      }
+
+      .btn-accent:hover {
+        background: var(--accent-dim);
+      }
+
+      .btn-sm {
+        padding: 8px 14px;
+        font-size: 12px;
+      }
+
+      .btn-ghost {
+        background: transparent;
+        border: 1px solid var(--border);
+      }
+
+      .btn-ghost:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--text-muted);
+      }
+
+      .import-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 0;
+        border-top: none;
+      }
+
+      /* Main content */
+      .main {
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-deep);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .now-playing {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        position: relative;
+      }
+
+      .visualizer-container {
+        position: absolute;
+        inset: 0;
+        opacity: 0.6;
+      }
+
+      #visualizer {
+        width: 100%;
+        height: 100%;
+      }
+
+      .track-info {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .track-title {
+        font-size: 32px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--accent);
+      }
+
+      .track-status {
+        font-size: 14px;
+        color: var(--accent-secondary);
+        min-height: 20px;
+      }
+
+      .track-playlist {
+        font-size: 14px;
+        color: var(--text-muted);
+      }
+
+      .progress-container {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 600px;
+        margin-bottom: 30px;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-pill);
+        cursor: pointer;
+        overflow: visible;
+        position: relative;
+      }
+
+      .progress-bar::before {
+        content: '';
+        position: absolute;
+        top: -10px;
+        left: 0;
+        right: 0;
+        bottom: -10px;
+        cursor: pointer;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: var(--accent-secondary);
+        border-radius: var(--radius-pill);
+        width: 0%;
+        transition: width 0.1s linear;
+        position: relative;
+      }
+
+      .progress-fill::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translate(50%, -50%);
+        width: 12px;
+        height: 12px;
+        background: var(--text-primary);
+        border-radius: 50%;
+        opacity: 0;
+        transition: var(--transition);
+      }
+
+      .progress-bar:hover .progress-fill::after {
+        opacity: 1;
+      }
+
+      .progress-times {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      .transport {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .transport-btn {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: 50%;
+        color: var(--text-secondary);
+        font-size: 20px;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .transport-btn:hover {
+        color: var(--text-primary);
+        transform: scale(1.1);
+      }
+
+      .transport-btn.play-btn {
+        width: 52px;
+        height: 52px;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-size: 22px;
+      }
+
+      .transport-btn.play-btn:hover {
+        background: var(--bg-hover);
+      }
+
+      .transport-btn.stop-btn.hard {
+        color: var(--error);
+      }
+
+      .transport-btn.stop-btn.hard:hover {
+        background: rgba(248, 113, 113, 0.15);
+        color: var(--error);
+      }
+
+      /* Track list */
+      .tracklist {
+        background: var(--bg-primary);
+        border-top: none;
+        max-height: 280px;
+        overflow-y: auto;
+      }
+
+      .tracklist-header {
+        display: grid;
+        grid-template-columns: 50px 1fr 80px 32px;
+        gap: 16px;
+        padding: 12px 20px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-muted);
+        background: var(--bg-secondary);
+        border-bottom: none;
+        position: sticky;
+        top: 0;
+      }
+
+      .track-row {
+        display: grid;
+        grid-template-columns: 50px 1fr 80px 32px;
+        gap: 16px;
+        padding: 12px 20px;
+        border-bottom: none;
+        cursor: pointer;
+        transition: var(--transition);
+        align-items: center;
+        border-radius: var(--radius-sm);
+        margin: 0 8px;
+      }
+
+      .track-row:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .track-row.active {
+        background: rgba(232, 124, 63, 0.1);
+      }
+
+      .track-row.active .track-index {
+        color: var(--accent);
+      }
+
+      .track-row.active .track-name {
+        color: var(--accent);
+      }
+
+      .track-index {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      .track-name {
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .track-duration {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        color: var(--text-muted);
+        text-align: right;
+      }
+
+      .track-trim-btn {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: 50%;
+        color: var(--text-muted);
+        cursor: pointer;
+        opacity: 0;
+        transition: var(--transition);
+      }
+
+      .track-row:hover .track-trim-btn {
+        opacity: 1;
+      }
+
+      .track-trim-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--accent);
+      }
+
+      .track-trim-btn.has-trim {
+        opacity: 1;
+        color: var(--accent);
+      }
+
+      /* Settings panel */
+      .settings {
+        grid-row: span 2;
+        position: relative;
+        transform: translateX(0);
+        transition: transform var(--transition), opacity var(--transition);
+        overflow-y: auto;
+      }
+
+      .settings.closed {
+        transform: translateX(100%);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Settings toggle button */
+      .settings-toggle {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 10;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        border-radius: 50%;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .settings-toggle:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-primary);
+      }
+
+      .settings-toggle.active {
+        color: var(--accent);
+      }
+
+      .connection-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: var(--radius-md);
+        margin-bottom: 20px;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--error);
+        animation: pulse 2s infinite;
+      }
+
+      .status-dot.connected {
+        background: var(--success);
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .status-text {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .ws-url-input {
+        flex: 1;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 6px 10px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: var(--text-primary);
+        width: 100%;
+        margin-top: 8px;
+      }
+
+      .ws-url-input:focus {
+        outline: none;
+        border-color: var(--accent-dim);
+      }
+
+      .settings-group {
+        margin-bottom: 24px;
+      }
+
+      .settings-group-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent-secondary);
+        margin-bottom: 14px;
+      }
+
+      .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .setting-label {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      .setting-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        color: var(--accent);
+        min-width: 50px;
+        text-align: right;
+      }
+
+      .slider-container {
+        margin-bottom: 16px;
+      }
+
+      .slider-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .slider {
+        width: 100%;
+        height: 4px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-pill);
+        outline: none;
+      }
+
+      .slider:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 4px;
+        border-radius: var(--radius-pill);
+      }
+
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        background: var(--text-primary);
+        border-radius: 50%;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .slider::-webkit-slider-thumb:hover {
+        transform: scale(1.15);
+      }
+
+      .slider::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+        background: var(--text-primary);
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+      }
+
+      /* Toggle switch */
+      .toggle-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .toggle-container input {
+        display: none;
+      }
+
+      .toggle-slider {
+        width: 40px;
+        height: 22px;
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-pill);
+        position: relative;
+        transition: var(--transition);
+      }
+
+      .toggle-slider::before {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        background: var(--text-muted);
+        border-radius: 50%;
+        top: 3px;
+        left: 3px;
+        transition: var(--transition);
+      }
+
+      .toggle-container input:checked + .toggle-slider {
+        background: var(--accent);
+      }
+
+      .toggle-container input:checked + .toggle-slider::before {
+        transform: translateX(18px);
+        background: white;
+      }
+
+      /* Modal */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: var(--transition);
+      }
+
+      .modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .modal {
+        background: var(--bg-secondary);
+        border: none;
+        border-radius: var(--radius-lg);
+        padding: 28px;
+        width: 90%;
+        max-width: 400px;
+        transform: scale(0.95);
+        transition: var(--transition);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+      }
+
+      .modal-overlay.active .modal {
+        transform: scale(1);
+      }
+
+      .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+      }
+
+      .modal-input {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--bg-tertiary);
+        border: 1px solid transparent;
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: 14px;
+        margin-bottom: 20px;
+      }
+
+      .modal-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+
+      /* Trim Modal */
+      .trim-modal {
+        max-width: 600px;
+      }
+
+      .trim-modal .modal-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .trim-track-name {
+        font-size: 14px;
+        font-weight: 400;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+      }
+
+      .waveform-container {
+        position: relative;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+
+      .waveform-canvas {
+        width: 100%;
+        height: 120px;
+        display: block;
+        border-radius: var(--radius-sm);
+        cursor: crosshair;
+      }
+
+      .waveform-handles {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        right: 16px;
+        height: 120px;
+        pointer-events: none;
+      }
+
+      .waveform-handle {
+        position: absolute;
+        top: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--accent);
+        cursor: ew-resize;
+        pointer-events: auto;
+        z-index: 2;
+      }
+
+      .waveform-handle::before {
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 10px;
+        height: 10px;
+        background: var(--accent);
+        border-radius: 50%;
+      }
+
+      .waveform-handle::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 10px;
+        height: 10px;
+        background: var(--accent);
+        border-radius: 50%;
+      }
+
+      .waveform-handle.start {
+        left: 0;
+      }
+
+      .waveform-handle.end {
+        right: 0;
+      }
+
+      .waveform-region {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        background: rgba(232, 124, 63, 0.15);
+        pointer-events: none;
+      }
+
+      .waveform-playhead {
+        position: absolute;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        background: var(--error);
+        pointer-events: none;
+        opacity: 0;
+        z-index: 3;
+      }
+
+      .waveform-playhead.active {
+        opacity: 1;
+      }
+
+      .trim-time-inputs {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .trim-time-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+      }
+
+      .trim-time-label {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .trim-time-input {
+        padding: 10px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid transparent;
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        text-align: center;
+      }
+
+      .trim-time-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .trim-duration {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 0 16px;
+      }
+
+      .trim-duration-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 16px;
+        color: var(--accent);
+      }
+
+      .trim-preview-controls {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .trim-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+      }
+
+      .trim-actions-left {
+        display: flex;
+        gap: 12px;
+      }
+
+      .trim-actions-right {
+        display: flex;
+        gap: 12px;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: var(--radius-pill);
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      /* Empty state */
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        color: var(--text-muted);
+        text-align: center;
+      }
+
+      .empty-state .icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.6;
+        color: var(--accent-secondary);
+      }
+
+      .empty-state svg {
+        color: var(--accent-secondary);
+        opacity: 0.5;
+      }
+
+      .empty-state p {
+        font-size: 14px;
+        max-width: 200px;
+      }
+
+      /* Hidden file inputs */
+      .hidden-input {
+        display: none;
+      }
+
+      /* Animations */
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .track-row {
+        animation: slideIn 0.2s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- Sidebar - Playlists -->
+      <div class="panel sidebar">
+        <div class="panel-header">
+          <span class="panel-title">Playlists</span>
+        </div>
+        <div class="playlist-list" id="playlistList">
+          <!-- Populated by JS -->
+        </div>
+        <div class="import-actions">
+          <button class="btn" id="importFolderBtn">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+              />
+            </svg>
+            Import folder
+          </button>
+          <button class="btn" id="importM3uBtn">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            Import M3U
+          </button>
+        </div>
+        <div class="import-actions">
+          <button class="btn" id="exportBtn">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Export backup
+          </button>
+          <button class="btn" id="importBackupBtn">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Import backup
+          </button>
+        </div>
+      </div>
+
+      <!-- Main content -->
+      <div class="main">
+        <button class="settings-toggle active" id="settingsToggle" title="Toggle settings">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+            />
+          </svg>
+        </button>
+        <div class="now-playing">
+          <div class="visualizer-container">
+            <canvas id="visualizer"></canvas>
+          </div>
+          <div class="track-info">
+            <div class="track-title" id="trackTitle">No track loaded</div>
+            <div class="track-status" id="trackStatus"></div>
+            <div class="track-playlist">
+              <span id="trackPlaylist">Select a playlist to begin</span>
+              <span
+                id="trackGain"
+                style="
+                  margin-left: 12px;
+                  opacity: 0.6;
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                "
+              ></span>
+            </div>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar" id="progressBar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-times">
+              <span id="currentTime">0:00</span>
+              <span id="duration">0:00</span>
+            </div>
+          </div>
+          <div class="transport">
+            <button class="transport-btn" id="prevBtn" title="Previous">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+              </svg>
+            </button>
+            <button class="transport-btn stop-btn" id="stopBtn" title="Stop (fade)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="1" />
+              </svg>
+            </button>
+            <button class="transport-btn play-btn" id="playBtn" title="Play/Pause">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" id="playIcon">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+            </button>
+            <button class="transport-btn stop-btn hard" id="hardStopBtn" title="Hard stop">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+              </svg>
+            </button>
+            <button class="transport-btn" id="nextBtn" title="Next">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="tracklist" id="tracklist">
+          <div class="tracklist-header">
+            <span>#</span>
+            <span>Title</span>
+            <span style="text-align: right">Duration</span>
+            <span></span>
+          </div>
+          <div id="tracklistBody">
+            <div class="empty-state">
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                style="opacity: 0.5; margin-bottom: 16px"
+              >
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+              </svg>
+              <p>Import a folder or M3U file to get started</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings panel -->
+      <div class="panel settings">
+        <div class="panel-header">
+          <span class="panel-title">Settings</span>
+        </div>
+
+        <div class="connection-status">
+          <div class="status-dot" id="statusDot"></div>
+          <span class="status-text" id="statusText">Disconnected</span>
+        </div>
+        <input
+          type="text"
+          class="ws-url-input"
+          id="wsUrl"
+          value="ws://localhost:8080"
+          placeholder="WebSocket URL"
+          style="margin-bottom: 20px"
+        />
+
+        <div class="settings-group">
+          <div class="settings-group-title">Volume</div>
+          <div class="slider-container">
+            <div class="slider-header">
+              <span class="setting-label">Master</span>
+              <span class="setting-value" id="volumeValue">100%</span>
+            </div>
+            <input type="range" class="slider" id="volumeSlider" min="0" max="100" value="100" />
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-group-title">Fade settings</div>
+          <div class="slider-container">
+            <div class="slider-header">
+              <span class="setting-label">Fade in</span>
+              <span class="setting-value" id="fadeInValue">2.0s</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="fadeInSlider"
+              min="0"
+              max="10"
+              step="0.5"
+              value="2"
+            />
+          </div>
+          <div class="slider-container">
+            <div class="slider-header">
+              <span class="setting-label">Fade out</span>
+              <span class="setting-value" id="fadeOutValue">3.0s</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="fadeOutSlider"
+              min="0"
+              max="10"
+              step="0.5"
+              value="3"
+            />
+          </div>
+          <div class="slider-container">
+            <div class="slider-header">
+              <span class="setting-label">Start next at</span>
+              <span class="setting-value" id="crossfadeValue">4.0s left</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="crossfadeSlider"
+              min="0"
+              max="10"
+              step="0.5"
+              value="4"
+            />
+          </div>
+          <div class="slider-container">
+            <div class="slider-header">
+              <span class="setting-label">Stop fade</span>
+              <span class="setting-value" id="stopFadeValue">2.0s</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="stopFadeSlider"
+              min="0"
+              max="5"
+              step="0.5"
+              value="2"
+            />
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-group-title">Playback</div>
+          <label class="toggle-container">
+            <span class="setting-label">Shuffle</span>
+            <input type="checkbox" id="shuffleToggle" />
+            <span class="toggle-slider"></span>
+          </label>
+          <label class="toggle-container" style="margin-top: 12px">
+            <span class="setting-label">Loop</span>
+            <input type="checkbox" id="loopToggle" />
+            <span class="toggle-slider"></span>
+          </label>
+          <label class="toggle-container" style="margin-top: 12px">
+            <span class="setting-label">Normalize volume</span>
+            <input type="checkbox" id="normalizeToggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+          <div class="slider-container" style="margin-top: 12px">
+            <div class="slider-header">
+              <span class="setting-label">Target loudness</span>
+              <span class="setting-value" id="targetLoudnessValue">-14 dB</span>
+            </div>
+            <input
+              type="range"
+              class="slider"
+              id="targetLoudnessSlider"
+              min="-24"
+              max="-6"
+              step="1"
+              value="-14"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" class="hidden-input" id="folderInput" webkitdirectory multiple />
+    <input type="file" class="hidden-input" id="m3uInput" accept=".m3u,.m3u8" />
+    <input type="file" class="hidden-input" id="backupInput" accept=".json,.plb" />
+
+    <!-- Modal for new playlist -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <div class="modal-title" id="modalTitle">New playlist</div>
+        <input type="text" class="modal-input" id="modalInput" placeholder="Playlist name" />
+        <div class="modal-actions">
+          <button class="btn" id="modalCancel">Cancel</button>
+          <button class="btn btn-accent" id="modalConfirm">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export modal -->
+    <div class="modal-overlay" id="exportModalOverlay">
+      <div class="modal">
+        <div class="modal-title">Export backup</div>
+        <label class="toggle-container" style="margin: 16px 0">
+          <span class="setting-label">Include audio files</span>
+          <input type="checkbox" id="exportIncludeAudio" />
+          <span class="toggle-slider"></span>
+        </label>
+        <p
+          class="export-warning"
+          id="exportWarning"
+          style="display: none; margin: 0 0 16px; font-size: 12px; color: var(--text-dim)"
+        >
+          Audio files will be included in an efficient binary format (.plb).
+        </p>
+        <div class="modal-actions">
+          <button class="btn" id="exportModalCancel">Cancel</button>
+          <button class="btn btn-accent" id="exportModalConfirm">Export</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trim modal -->
+    <div class="modal-overlay" id="trimModalOverlay">
+      <div class="modal trim-modal">
+        <div class="modal-title">
+          <span>Trim</span>
+          <span class="trim-track-name" id="trimTrackName"></span>
+        </div>
+
+        <div class="waveform-container">
+          <canvas class="waveform-canvas" id="waveformCanvas"></canvas>
+          <div class="waveform-handles">
+            <div class="waveform-region" id="waveformRegion"></div>
+            <div class="waveform-handle start" id="handleStart"></div>
+            <div class="waveform-handle end" id="handleEnd"></div>
+            <div class="waveform-playhead" id="waveformPlayhead"></div>
+          </div>
+        </div>
+
+        <div class="trim-time-inputs">
+          <div class="trim-time-group">
+            <span class="trim-time-label">Start</span>
+            <input type="text" class="trim-time-input" id="trimStartInput" value="0:00" />
+          </div>
+          <div class="trim-duration">
+            <span class="trim-time-label">Duration</span>
+            <span class="trim-duration-value" id="trimDurationValue">0:00</span>
+          </div>
+          <div class="trim-time-group">
+            <span class="trim-time-label">End</span>
+            <input type="text" class="trim-time-input" id="trimEndInput" value="0:00" />
+          </div>
+        </div>
+
+        <div class="trim-preview-controls">
+          <button class="btn btn-icon" id="trimPreviewBtn" title="Preview selection">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </button>
+          <button class="btn btn-icon" id="trimStopBtn" title="Stop preview">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="6" y="4" width="4" height="16"></rect>
+              <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+          </button>
+        </div>
+
+        <div class="trim-actions">
+          <div class="trim-actions-left">
+            <button class="btn" id="trimResetBtn">Reset</button>
+          </div>
+          <div class="trim-actions-right">
+            <button class="btn" id="trimCancelBtn">Cancel</button>
+            <button class="btn btn-accent" id="trimSaveBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ==================== AUDIO ENGINE ====================
+      class AudioEngine {
+        constructor() {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          this.masterGain = this.ctx.createGain();
+          this.analyser = this.ctx.createAnalyser();
+          this.analyser.fftSize = 256;
+          this._analyserData = null;
+
+          // Brick wall limiter at -12 dB
+          this.limiter = this.ctx.createDynamicsCompressor();
+          this.limiter.threshold.setValueAtTime(-12, this.ctx.currentTime);
+          this.limiter.knee.setValueAtTime(0, this.ctx.currentTime);
+          this.limiter.ratio.setValueAtTime(20, this.ctx.currentTime);
+          this.limiter.attack.setValueAtTime(0.003, this.ctx.currentTime);
+          this.limiter.release.setValueAtTime(0.1, this.ctx.currentTime);
+
+          // Signal chain: masterGain → limiter → analyser → destination
+          this.masterGain.connect(this.limiter);
+          this.limiter.connect(this.analyser);
+          this.analyser.connect(this.ctx.destination);
+
+          this.decks = [
+            { audio: new Audio(), gain: this.ctx.createGain(), source: null, objectUrl: null },
+            { audio: new Audio(), gain: this.ctx.createGain(), source: null, objectUrl: null },
+          ];
+
+          this.activeDeck = 0;
+          this.state = 'stopped';
+          this.currentFile = null;
+          this._fadeTimeout = null;
+
+          this.settings = {
+            volume: 1.0,
+            fadeIn: 2.0,
+            fadeOut: 3.0,
+            crossfade: 4.0,
+            stopFade: 2.0,
+            shuffle: false,
+            loop: false,
+            normalize: true,
+            targetLoudness: -12,
+          };
+
+          this.trackGains = new Map();
+
+          for (const deck of this.decks) {
+            deck.gain.connect(this.masterGain);
+            deck.audio.crossOrigin = 'anonymous';
+          }
+
+          this._setupDeckListeners();
+          this._setupAudioUnlock();
+        }
+
+        _clearDeckObjectUrl(deckIndex) {
+          const deck = this.decks[deckIndex];
+          if (deck.objectUrl) {
+            URL.revokeObjectURL(deck.objectUrl);
+            deck.objectUrl = null;
+          }
+          deck.audio.removeAttribute('src');
+          deck.audio.load();
+        }
+
+        _setDeckSrcFromFile(deckIndex, file) {
+          this._clearDeckObjectUrl(deckIndex);
+          const deck = this.decks[deckIndex];
+          const url = URL.createObjectURL(file);
+          deck.objectUrl = url;
+          deck.audio.src = url;
+        }
+
+        _waitForAudioCanPlayOrThrow(audio, timeoutMs) {
+          return new Promise((resolve, reject) => {
+            let finished = false;
+            let timeoutId = null;
+
+            function cleanup() {
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+              }
+              audio.removeEventListener('canplaythrough', onCanPlayThrough);
+              audio.removeEventListener('error', onError);
+            }
+
+            function onCanPlayThrough() {
+              if (finished) return;
+              finished = true;
+              cleanup();
+              resolve();
+            }
+
+            function onError() {
+              if (finished) return;
+              finished = true;
+              cleanup();
+              reject(new Error('Audio failed to load'));
+            }
+
+            timeoutId = setTimeout(() => {
+              if (finished) return;
+              finished = true;
+              cleanup();
+              reject(new Error('Timed out waiting for audio to load'));
+            }, timeoutMs);
+
+            audio.addEventListener('canplaythrough', onCanPlayThrough);
+            audio.addEventListener('error', onError);
+            audio.load();
+          });
+        }
+
+        _setupAudioUnlock() {
+          const unlock = () => {
+            if (this.ctx.state === 'suspended') {
+              this.ctx.resume();
+            }
+            document.removeEventListener('click', unlock);
+            document.removeEventListener('touchstart', unlock);
+            document.removeEventListener('keydown', unlock);
+          };
+          document.addEventListener('click', unlock);
+          document.addEventListener('touchstart', unlock);
+          document.addEventListener('keydown', unlock);
+        }
+
+        _setupDeckListeners() {
+          for (const [i, deck] of this.decks.entries()) {
+            deck.audio.addEventListener('canplaythrough', () => {
+              if (deck.audio.src && !deck.source) {
+                deck.source = this.ctx.createMediaElementSource(deck.audio);
+                deck.source.connect(deck.gain);
+              }
+            });
+
+            deck.audio.addEventListener('ended', () => {
+              if (i === this.activeDeck && this.onTrackEnd) {
+                this.onTrackEnd();
+              }
+            });
+
+            deck.audio.addEventListener('timeupdate', () => {
+              if (i === this.activeDeck) {
+                const endTime = this._trimEnd ?? deck.audio.duration;
+                const remaining = endTime - deck.audio.currentTime;
+
+                if (remaining <= 0 && this.state === 'playing') {
+                  if (this.onTrackEnd && !this._crossfading) {
+                    this._crossfading = true;
+                    this.onTrackEnd();
+                  }
+                } else if (
+                  remaining <= this.settings.crossfade &&
+                  remaining > 0 &&
+                  this.state === 'playing'
+                ) {
+                  if (this.onCrossfadeStart && !this._crossfading) {
+                    this._crossfading = true;
+                    this.onCrossfadeStart();
+                  }
+                }
+              }
+            });
+          }
+        }
+
+        async playFile(file, trackId = null, trimStart = null, trimEnd = null, options = {}) {
+          const { immediate = false } = options;
+
+          if (this.ctx.state === 'suspended') {
+            await this.ctx.resume();
+          }
+
+          if (this._fadeTimeout) {
+            clearTimeout(this._fadeTimeout);
+            this._fadeTimeout = null;
+          }
+
+          const nextDeck = (this.activeDeck + 1) % 2;
+          const currentDeck = this.activeDeck;
+          const now = this.ctx.currentTime;
+          const targetGain = this.settings.normalize && trackId ? this.getTrackGain(trackId) : 1.0;
+
+          for (const deck of this.decks) {
+            deck.gain.gain.cancelScheduledValues(now);
+          }
+
+          if (immediate) {
+            this.decks[currentDeck].gain.gain.setValueAtTime(0, now);
+            this.decks[currentDeck].audio.pause();
+            this.decks[currentDeck].audio.currentTime = 0;
+            this._clearDeckObjectUrl(currentDeck);
+          }
+
+          this._setDeckSrcFromFile(nextDeck, file);
+          this.decks[nextDeck].gain.gain.setValueAtTime(0, now);
+
+          try {
+            await this._waitForAudioCanPlayOrThrow(this.decks[nextDeck].audio, 15000);
+          } catch (e) {
+            this._clearDeckObjectUrl(nextDeck);
+            throw e;
+          }
+
+          if (!this.decks[nextDeck].source) {
+            this.decks[nextDeck].source = this.ctx.createMediaElementSource(
+              this.decks[nextDeck].audio
+            );
+            this.decks[nextDeck].source.connect(this.decks[nextDeck].gain);
+          }
+
+          if (trimStart !== null && trimStart > 0) {
+            this.decks[nextDeck].audio.currentTime = trimStart;
+          }
+
+          this._trimStart = trimStart;
+          this._trimEnd = trimEnd;
+
+          const nowAfterLoad = this.ctx.currentTime;
+
+          if (immediate) {
+            this.decks[nextDeck].gain.gain.setValueAtTime(targetGain, nowAfterLoad);
+          } else {
+            if (this.state === 'playing' || this.state === 'stopping') {
+              this.decks[currentDeck].gain.gain.setValueAtTime(
+                this.decks[currentDeck].gain.gain.value,
+                nowAfterLoad
+              );
+              this.decks[currentDeck].gain.gain.linearRampToValueAtTime(
+                0,
+                nowAfterLoad + this.settings.fadeOut
+              );
+              this._fadeTimeout = setTimeout(() => {
+                this.decks[currentDeck].audio.pause();
+                this.decks[currentDeck].audio.currentTime = 0;
+                this._clearDeckObjectUrl(currentDeck);
+              }, this.settings.fadeOut * 1000);
+            }
+
+            this.decks[nextDeck].gain.gain.setValueAtTime(0, nowAfterLoad);
+            this.decks[nextDeck].gain.gain.linearRampToValueAtTime(
+              targetGain,
+              nowAfterLoad + this.settings.fadeIn
+            );
+          }
+
+          this.decks[nextDeck].audio.play();
+          this._currentTrackId = trackId;
+          this.activeDeck = nextDeck;
+          this.currentFile = file;
+          this.state = 'playing';
+          this._crossfading = false;
+        }
+
+        async analyzeLoudness(file, trackId) {
+          try {
+            const arrayBuffer = await file.arrayBuffer();
+
+            // Use a temporary OfflineAudioContext to avoid memory buildup in main context
+            const tempCtx = new OfflineAudioContext(2, 44100, 44100);
+            const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+
+            const duration = audioBuffer.duration;
+
+            let sumSquares = 0;
+            let sampleCount = 0;
+
+            for (const channel of range(audioBuffer.numberOfChannels)) {
+              const data = audioBuffer.getChannelData(channel);
+              for (const sample of data) {
+                sumSquares += sample * sample;
+                sampleCount++;
+              }
+            }
+
+            const rms = Math.sqrt(sumSquares / sampleCount);
+            const rmsDb = 20 * Math.log10(rms || 0.0001);
+            const gainDb = this.settings.targetLoudness - rmsDb;
+            const gainLinear = Math.pow(10, gainDb / 20);
+            const clampedGain = Math.min(Math.max(gainLinear, 0.1), 4.0);
+
+            this.trackGains.set(trackId, clampedGain);
+
+            // Allow GC between analyses
+            await new Promise((r) => setTimeout(r, 0));
+
+            return { gain: clampedGain, duration };
+          } catch {
+            return { gain: 1.0, duration: null };
+          }
+        }
+
+        getTrackGain(trackId) {
+          return this.trackGains.get(trackId) || 1.0;
+        }
+
+        play() {
+          if (this.state === 'paused') {
+            this.ctx.resume();
+            const deck = this.decks[this.activeDeck];
+            const now = this.ctx.currentTime;
+            deck.gain.gain.setValueAtTime(0, now);
+            deck.gain.gain.linearRampToValueAtTime(1, now + this.settings.fadeIn);
+            deck.audio.play();
+            this.state = 'playing';
+          }
+        }
+
+        pause() {
+          if (this.state === 'playing') {
+            const deck = this.decks[this.activeDeck];
+            deck.audio.pause();
+            this.state = 'paused';
+          }
+        }
+
+        stop() {
+          if (this.state === 'stopped') return;
+
+          if (this._fadeTimeout) {
+            clearTimeout(this._fadeTimeout);
+            this._fadeTimeout = null;
+          }
+
+          const deck = this.decks[this.activeDeck];
+          const now = this.ctx.currentTime;
+
+          // Cancel any pending ramps and set current value
+          deck.gain.gain.cancelScheduledValues(now);
+          deck.gain.gain.setValueAtTime(deck.gain.gain.value, now);
+          deck.gain.gain.linearRampToValueAtTime(0, now + this.settings.stopFade);
+
+          // Also stop the other deck if it's fading
+          const otherDeck = this.decks[(this.activeDeck + 1) % 2];
+          otherDeck.gain.gain.cancelScheduledValues(now);
+          otherDeck.gain.gain.setValueAtTime(0, now);
+          otherDeck.audio.pause();
+          otherDeck.audio.currentTime = 0;
+          this._clearDeckObjectUrl((this.activeDeck + 1) % 2);
+
+          this._fadeTimeout = setTimeout(() => {
+            deck.audio.pause();
+            deck.audio.currentTime = 0;
+            this._clearDeckObjectUrl(this.activeDeck);
+            this.state = 'stopped';
+            this._crossfading = false;
+            this.onStateChange?.('stopped');
+          }, this.settings.stopFade * 1000);
+
+          this.state = 'stopping';
+        }
+
+        hardStop() {
+          if (this._fadeTimeout) {
+            clearTimeout(this._fadeTimeout);
+            this._fadeTimeout = null;
+          }
+          const now = this.ctx.currentTime;
+          for (const [i, deck] of this.decks.entries()) {
+            deck.gain.gain.cancelScheduledValues(now);
+            deck.gain.gain.setValueAtTime(0, now);
+            deck.audio.pause();
+            deck.audio.currentTime = 0;
+            this._clearDeckObjectUrl(i);
+          }
+          this._crossfading = false;
+          this.state = 'stopped';
+          this.onStateChange?.('stopped');
+        }
+
+        seek(time) {
+          const deck = this.decks[this.activeDeck];
+          if (deck.audio.duration) {
+            const trimStart = this._trimStart || 0;
+            const trimEnd = this._trimEnd ?? deck.audio.duration;
+            const rawTime = trimStart + time;
+            deck.audio.currentTime = Math.max(trimStart, Math.min(rawTime, trimEnd));
+          }
+        }
+
+        setVolume(vol) {
+          this.settings.volume = Math.max(0, Math.min(1, vol));
+          this.masterGain.gain.setValueAtTime(this.settings.volume, this.ctx.currentTime);
+        }
+
+        getCurrentTime() {
+          const rawTime = this.decks[this.activeDeck].audio.currentTime || 0;
+          const trimStart = this._trimStart || 0;
+          return rawTime - trimStart;
+        }
+
+        getDuration() {
+          const rawDuration = this.decks[this.activeDeck].audio.duration || 0;
+          const trimStart = this._trimStart || 0;
+          const trimEnd = this._trimEnd ?? rawDuration;
+          return trimEnd - trimStart;
+        }
+
+        getRawCurrentTime() {
+          return this.decks[this.activeDeck].audio.currentTime || 0;
+        }
+
+        getAnalyserData() {
+          const neededLength = this.analyser.frequencyBinCount;
+          if (!this._analyserData || this._analyserData.length !== neededLength) {
+            this._analyserData = new Uint8Array(neededLength);
+          }
+          this.analyser.getByteFrequencyData(this._analyserData);
+          return this._analyserData;
+        }
+
+        destroy() {
+          if (this._fadeTimeout) {
+            clearTimeout(this._fadeTimeout);
+            this._fadeTimeout = null;
+          }
+
+          this.hardStop();
+          try {
+            this.ctx.close?.();
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      // ==================== WAVEFORM RENDERER ====================
+      class WaveformRenderer {
+        constructor(canvas) {
+          this.canvas = canvas;
+          this.ctx = canvas.getContext('2d');
+          this.peaks = null;
+          this.duration = 0;
+          this.trimStart = 0;
+          this.trimEnd = 0;
+          this.playheadPosition = null;
+        }
+
+        async loadAudio(file) {
+          const arrayBuffer = await file.arrayBuffer();
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+          audioCtx.close();
+
+          this.duration = audioBuffer.duration;
+          this.trimEnd = this.duration;
+          this.peaks = this.extractPeaks(audioBuffer);
+          this.render();
+          return this.duration;
+        }
+
+        extractPeaks(audioBuffer) {
+          const channelData = audioBuffer.getChannelData(0);
+          const numBins = Math.min(this.canvas.width * 2, 1000);
+          const samplesPerBin = Math.floor(channelData.length / numBins);
+          const peaks = [];
+
+          for (const i of range(numBins)) {
+            let max = 0;
+            const start = i * samplesPerBin;
+            const end = start + samplesPerBin;
+            for (const sample of channelData.subarray(start, end)) {
+              const abs = Math.abs(sample);
+              if (abs > max) max = abs;
+            }
+            peaks.push(max);
+          }
+
+          return peaks;
+        }
+
+        setTrimPoints(start, end) {
+          this.trimStart = Math.max(0, start);
+          this.trimEnd = Math.min(this.duration, end);
+          this.render();
+        }
+
+        setPlayhead(position) {
+          this.playheadPosition = position;
+          this.render();
+        }
+
+        clearPlayhead() {
+          this.playheadPosition = null;
+          this.render();
+        }
+
+        render() {
+          if (!this.peaks || this.peaks.length === 0) return;
+
+          const width = this.canvas.width;
+          const height = this.canvas.height;
+          const ctx = this.ctx;
+
+          ctx.clearRect(0, 0, width, height);
+
+          const rawBarWidth = width / this.peaks.length;
+          const barWidth = Math.max(1, rawBarWidth);
+          const barGap = rawBarWidth >= 2 ? 1 : 0;
+          const centerY = height / 2;
+
+          const startRatio = this.trimStart / this.duration;
+          const endRatio = this.trimEnd / this.duration;
+
+          for (const [i, peak] of this.peaks.entries()) {
+            const x = i * barWidth;
+            const ratio = i / this.peaks.length;
+            const inSelection = ratio >= startRatio && ratio <= endRatio;
+
+            const barHeight = peak * centerY * 0.9;
+
+            if (inSelection) {
+              ctx.fillStyle = '#e87c3f';
+            } else {
+              ctx.fillStyle = 'rgba(156, 163, 175, 0.35)';
+            }
+
+            ctx.fillRect(x, centerY - barHeight, barWidth - barGap, barHeight * 2);
+          }
+
+          if (this.playheadPosition !== null && this.playheadPosition >= 0) {
+            const playheadX = (this.playheadPosition / this.duration) * width;
+            ctx.fillStyle = '#f87171';
+            ctx.fillRect(playheadX - 1, 0, 2, height);
+          }
+        }
+
+        timeToX(time) {
+          return (time / this.duration) * this.canvas.width;
+        }
+
+        xToTime(x) {
+          const rect = this.canvas.getBoundingClientRect();
+          const canvasX = (x - rect.left) * (this.canvas.width / rect.width);
+          return Math.max(
+            0,
+            Math.min(this.duration, (canvasX / this.canvas.width) * this.duration)
+          );
+        }
+
+        resize() {
+          const rect = this.canvas.getBoundingClientRect();
+          const dpr = window.devicePixelRatio || 1;
+          this.canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+          this.canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+          this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          this.render();
+        }
+      }
+
+      // ==================== TRIM EDITOR ====================
+      class TrimEditor {
+        constructor() {
+          this.overlay = document.getElementById('trimModalOverlay');
+          this.trackNameEl = document.getElementById('trimTrackName');
+          this.canvas = document.getElementById('waveformCanvas');
+          this.handleStart = document.getElementById('handleStart');
+          this.handleEnd = document.getElementById('handleEnd');
+          this.regionEl = document.getElementById('waveformRegion');
+          this.playheadEl = document.getElementById('waveformPlayhead');
+          this.startInput = document.getElementById('trimStartInput');
+          this.endInput = document.getElementById('trimEndInput');
+          this.durationValue = document.getElementById('trimDurationValue');
+          this.previewBtn = document.getElementById('trimPreviewBtn');
+          this.stopBtn = document.getElementById('trimStopBtn');
+          this.resetBtn = document.getElementById('trimResetBtn');
+          this.cancelBtn = document.getElementById('trimCancelBtn');
+          this.saveBtn = document.getElementById('trimSaveBtn');
+
+          this.waveform = new WaveformRenderer(this.canvas);
+          this.currentTrack = null;
+          this.currentFile = null;
+          this.onSave = null;
+          this.previewAudio = null;
+          this.previewUrl = null;
+          this.previewAnimationId = null;
+          this.dragging = null;
+
+          this.setupEventListeners();
+        }
+
+        setupEventListeners() {
+          this.cancelBtn.addEventListener('click', () => this.close());
+          this.overlay.addEventListener('click', (e) => {
+            if (e.target === this.overlay) this.close();
+          });
+
+          this.saveBtn.addEventListener('click', () => this.save());
+          this.resetBtn.addEventListener('click', () => this.reset());
+          this.previewBtn.addEventListener('click', () => this.preview());
+          this.stopBtn.addEventListener('click', () => this.stopPreview());
+
+          this.startInput.addEventListener('change', () => this.handleInputChange('start'));
+          this.endInput.addEventListener('change', () => this.handleInputChange('end'));
+
+          this.canvas.addEventListener('click', (e) => this.seekWaveform(e));
+
+          this.handleStart.addEventListener('mousedown', (e) => this.startDrag(e, 'start'));
+          this.handleEnd.addEventListener('mousedown', (e) => this.startDrag(e, 'end'));
+          document.addEventListener('mousemove', (e) => this.onDrag(e));
+          document.addEventListener('mouseup', () => this.endDrag());
+
+          this.handleStart.addEventListener('touchstart', (e) => this.startDrag(e, 'start'), {
+            passive: false,
+          });
+          this.handleEnd.addEventListener('touchstart', (e) => this.startDrag(e, 'end'), {
+            passive: false,
+          });
+          document.addEventListener('touchmove', (e) => this.onDrag(e), { passive: false });
+          document.addEventListener('touchend', () => this.endDrag());
+
+          document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.overlay.classList.contains('active')) {
+              this.close();
+            }
+          });
+        }
+
+        async open(track, file, onSave) {
+          this.currentTrack = track;
+          this.currentFile = file;
+          this.onSave = onSave;
+
+          this.trackNameEl.textContent = stripExtension(track.name);
+          this.overlay.classList.add('active');
+
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          this.resizeCanvas();
+
+          const duration = await this.waveform.loadAudio(file);
+
+          const trimStart = track.trimStart || 0;
+          const trimEnd = track.trimEnd || duration;
+
+          this.waveform.setTrimPoints(trimStart, trimEnd);
+          this.updateHandlePositions();
+          this.updateInputs();
+          this.updateDuration();
+        }
+
+        close() {
+          this.stopPreview();
+          this.overlay.classList.remove('active');
+          this.currentTrack = null;
+          this.currentFile = null;
+          this.onSave = null;
+        }
+
+        save() {
+          if (this.currentTrack && this.onSave) {
+            const trimStart = this.waveform.trimStart;
+            const trimEnd = this.waveform.trimEnd;
+
+            if (trimStart === 0 && trimEnd === this.waveform.duration) {
+              this.currentTrack.trimStart = undefined;
+              this.currentTrack.trimEnd = undefined;
+            } else {
+              this.currentTrack.trimStart = trimStart;
+              this.currentTrack.trimEnd = trimEnd;
+            }
+
+            this.onSave(this.currentTrack);
+          }
+          this.close();
+        }
+
+        reset() {
+          this.waveform.setTrimPoints(0, this.waveform.duration);
+          this.updateHandlePositions();
+          this.updateInputs();
+          this.updateDuration();
+        }
+
+        resizeCanvas() {
+          const rect = this.canvas.getBoundingClientRect();
+          this.canvas.width = rect.width * window.devicePixelRatio;
+          this.canvas.height = rect.height * window.devicePixelRatio;
+        }
+
+        updateHandlePositions() {
+          const containerWidth = this.canvas.offsetWidth;
+          const startX = (this.waveform.trimStart / this.waveform.duration) * containerWidth;
+          const endX = (this.waveform.trimEnd / this.waveform.duration) * containerWidth;
+
+          this.handleStart.style.left = startX + 'px';
+          this.handleEnd.style.left = endX + 'px';
+          this.handleEnd.style.right = 'auto';
+
+          this.regionEl.style.left = startX + 'px';
+          this.regionEl.style.width = endX - startX + 'px';
+        }
+
+        updateInputs() {
+          this.startInput.value = formatTimePrecise(this.waveform.trimStart);
+          this.endInput.value = formatTimePrecise(this.waveform.trimEnd);
+        }
+
+        updateDuration() {
+          const duration = this.waveform.trimEnd - this.waveform.trimStart;
+          this.durationValue.textContent = formatTimePrecise(duration);
+        }
+
+        handleInputChange(type) {
+          const input = type === 'start' ? this.startInput : this.endInput;
+          const time = this.parseTime(input.value);
+
+          if (isNaN(time)) {
+            this.updateInputs();
+            return;
+          }
+
+          if (type === 'start') {
+            const newStart = Math.max(0, Math.min(time, this.waveform.trimEnd - 0.1));
+            this.waveform.setTrimPoints(newStart, this.waveform.trimEnd);
+          } else {
+            const newEnd = Math.max(
+              this.waveform.trimStart + 0.1,
+              Math.min(time, this.waveform.duration)
+            );
+            this.waveform.setTrimPoints(this.waveform.trimStart, newEnd);
+          }
+
+          this.updateHandlePositions();
+          this.updateInputs();
+          this.updateDuration();
+        }
+
+        startDrag(e, handle) {
+          e.preventDefault();
+          this.dragging = handle;
+        }
+
+        onDrag(e) {
+          if (!this.dragging) return;
+          e.preventDefault();
+
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const rect = this.canvas.getBoundingClientRect();
+          const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+          const time = (x / rect.width) * this.waveform.duration;
+
+          if (this.dragging === 'start') {
+            const newStart = Math.max(0, Math.min(time, this.waveform.trimEnd - 0.1));
+            this.waveform.setTrimPoints(newStart, this.waveform.trimEnd);
+          } else {
+            const newEnd = Math.max(
+              this.waveform.trimStart + 0.1,
+              Math.min(time, this.waveform.duration)
+            );
+            this.waveform.setTrimPoints(this.waveform.trimStart, newEnd);
+          }
+
+          this.updateHandlePositions();
+          this.updateInputs();
+          this.updateDuration();
+        }
+
+        endDrag() {
+          this.dragging = null;
+        }
+
+        preview() {
+          this.previewFrom(this.waveform.trimStart);
+        }
+
+        stopPreview() {
+          if (this.previewAudio) {
+            this.previewAudio.pause();
+            this.previewAudio.src = '';
+            this.previewAudio.load?.();
+            this.previewAudio = null;
+          }
+          if (this.previewUrl) {
+            URL.revokeObjectURL(this.previewUrl);
+            this.previewUrl = null;
+          }
+          if (this.previewAnimationId) {
+            cancelAnimationFrame(this.previewAnimationId);
+            this.previewAnimationId = null;
+          }
+          this.playheadEl.classList.remove('active');
+          this.waveform.clearPlayhead();
+        }
+
+        seekWaveform(e) {
+          const rect = this.canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const percent = Math.max(0, Math.min(1, x / rect.width));
+          const time = percent * this.waveform.duration;
+
+          if (this.previewAudio) {
+            this.previewAudio.currentTime = time;
+          } else {
+            this.previewFrom(time);
+          }
+        }
+
+        previewFrom(startTime) {
+          this.stopPreview();
+
+          const url = URL.createObjectURL(this.currentFile);
+          this.previewUrl = url;
+          this.previewAudio = new Audio(url);
+          this.previewAudio.currentTime = startTime;
+          this.previewAudio.play();
+
+          this.playheadEl.classList.add('active');
+
+          const updatePlayhead = () => {
+            if (!this.previewAudio) return;
+
+            const currentTime = this.previewAudio.currentTime;
+            if (currentTime >= this.waveform.trimEnd) {
+              this.stopPreview();
+              return;
+            }
+
+            this.waveform.setPlayhead(currentTime);
+            const containerWidth = this.canvas.offsetWidth;
+            const playheadX = (currentTime / this.waveform.duration) * containerWidth;
+            this.playheadEl.style.left = playheadX + 'px';
+
+            this.previewAnimationId = requestAnimationFrame(updatePlayhead);
+          };
+
+          this.previewAnimationId = requestAnimationFrame(updatePlayhead);
+        }
+
+        parseTime(str) {
+          const parts = str.split(':');
+          if (parts.length === 2) {
+            const mins = parseInt(parts[0], 10);
+            const secs = parseFloat(parts[1]);
+            return mins * 60 + secs;
+          }
+          return parseFloat(str);
+        }
+      }
+
+      // ==================== STORAGE (IndexedDB) ====================
+      class Storage {
+        constructor() {
+          this.db = null;
+          this.audioManifest = {};
+          this.manifestDirty = false;
+          this._writeChain = Promise.resolve();
+          this._manifestSaveTimer = null;
+          this.ready = this._init();
+
+          const storage = this;
+          function flushOnHide() {
+            if (document.visibilityState === 'hidden') {
+              storage.flushManifest();
+            }
+          }
+          function handlePageHide() {
+            storage.flushManifest();
+          }
+
+          window.addEventListener('pagehide', handlePageHide);
+          document.addEventListener('visibilitychange', flushOnHide);
+        }
+
+        async _init() {
+          await new Promise((resolve, reject) => {
+            const request = indexedDB.open('PlaylistPlayerDB');
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+              this.db = request.result;
+              resolve();
+            };
+            request.onupgradeneeded = (event) => {
+              const db = event.target.result;
+              if (!db.objectStoreNames.contains('data')) {
+                db.createObjectStore('data', { keyPath: 'key' });
+              }
+              if (!db.objectStoreNames.contains('audioFiles')) {
+                db.createObjectStore('audioFiles', { keyPath: 'id' });
+              }
+            };
+          });
+          await this._loadManifest();
+        }
+
+        async _loadManifest() {
+          const data = await new Promise((resolve) => {
+            const tx = this.db.transaction('data', 'readonly');
+            const store = tx.objectStore('data');
+            const request = store.get('audioManifest');
+            request.onsuccess = () => resolve(request.result?.value ?? null);
+            request.onerror = () => resolve(null);
+          });
+          this.audioManifest = data || {};
+        }
+
+        async _saveManifest() {
+          if (!this.manifestDirty) return;
+          await this.save('audioManifest', this.audioManifest);
+          this.manifestDirty = false;
+        }
+
+        async _enqueueWrite(fn) {
+          await this.ready;
+          function ignoreChainError() {}
+          this._writeChain = this._writeChain.catch(ignoreChainError).then(fn);
+          return await this._writeChain;
+        }
+
+        _scheduleManifestSave() {
+          if (this._manifestSaveTimer) return;
+          const storage = this;
+          function flush() {
+            storage._manifestSaveTimer = null;
+            storage._saveManifest();
+          }
+          this._manifestSaveTimer = setTimeout(flush, 250);
+        }
+
+        async save(key, value) {
+          return await this._enqueueWrite(() => {
+            return new Promise((resolve, reject) => {
+              const tx = this.db.transaction('data', 'readwrite');
+              const store = tx.objectStore('data');
+              store.put({ key, value });
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => reject(tx.error);
+            });
+          });
+        }
+
+        async load(key) {
+          await this.ready;
+          return new Promise((resolve) => {
+            const tx = this.db.transaction('data', 'readonly');
+            const store = tx.objectStore('data');
+            const request = store.get(key);
+            request.onsuccess = () => resolve(request.result?.value ?? null);
+            request.onerror = () => resolve(null);
+          });
+        }
+
+        async saveSettings(settings) {
+          await this.save('settings', settings);
+        }
+
+        async loadSettings() {
+          return await this.load('settings');
+        }
+
+        async saveAudioFile(trackId, file) {
+          await this._enqueueWrite(() => {
+            return new Promise((resolve, reject) => {
+              const tx = this.db.transaction('audioFiles', 'readwrite');
+              const store = tx.objectStore('audioFiles');
+              store.put({ id: trackId, blob: file });
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => reject(tx.error);
+            });
+          });
+
+          this.audioManifest[trackId] = { name: file.name, type: file.type };
+          this.manifestDirty = true;
+          this._scheduleManifestSave();
+        }
+
+        async flushManifest() {
+          await this.ready;
+          if (this._manifestSaveTimer) {
+            clearTimeout(this._manifestSaveTimer);
+            this._manifestSaveTimer = null;
+          }
+          await this._saveManifest();
+        }
+
+        async loadAudioFile(trackId, fileName) {
+          await this.ready;
+          return new Promise((resolve) => {
+            const tx = this.db.transaction('audioFiles', 'readonly');
+            const store = tx.objectStore('audioFiles');
+            const request = store.get(trackId);
+            request.onsuccess = () => {
+              const result = request.result;
+              if (result) {
+                const meta = this.audioManifest[trackId];
+                resolve(
+                  new File([result.blob], fileName || meta?.name || 'audio', {
+                    type: meta?.type || 'audio/mpeg',
+                  })
+                );
+              } else {
+                resolve(null);
+              }
+            };
+            request.onerror = () => resolve(null);
+          });
+        }
+
+        async deleteAudioFile(trackId) {
+          delete this.audioManifest[trackId];
+          this.manifestDirty = true;
+
+          await this._enqueueWrite(() => {
+            return new Promise((resolve) => {
+              const tx = this.db.transaction('audioFiles', 'readwrite');
+              const store = tx.objectStore('audioFiles');
+              store.delete(trackId);
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => resolve();
+            });
+          });
+
+          await this._saveManifest();
+        }
+
+        async deleteAudioFiles(trackIds) {
+          await this._enqueueWrite(() => {
+            return new Promise((resolve) => {
+              const tx = this.db.transaction('audioFiles', 'readwrite');
+              const store = tx.objectStore('audioFiles');
+              for (const id of trackIds) {
+                delete this.audioManifest[id];
+                store.delete(id);
+              }
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => resolve();
+            });
+          });
+          this.manifestDirty = true;
+          await this._saveManifest();
+        }
+
+        async getAllAudioFiles() {
+          await this.ready;
+          return new Promise((resolve) => {
+            const tx = this.db.transaction('audioFiles', 'readonly');
+            const store = tx.objectStore('audioFiles');
+            const request = store.getAll();
+            request.onsuccess = () => {
+              const results = request.result || [];
+              const audioMap = new Map();
+              for (const item of results) {
+                const meta = this.audioManifest[item.id];
+                audioMap.set(item.id, {
+                  id: item.id,
+                  blob: item.blob,
+                  name: meta?.name || 'audio',
+                  type: meta?.type || 'audio/mpeg',
+                });
+              }
+              resolve(audioMap);
+            };
+            request.onerror = () => resolve(new Map());
+          });
+        }
+      }
+
+      // ==================== PLAYLIST MANAGER ====================
+      class PlaylistManager {
+        constructor(storage) {
+          this.storage = storage;
+          this.playlists = [];
+          this.activePlaylist = null;
+          this.currentIndex = -1;
+          this.playHistory = [];
+          this.historyPosition = -1;
+        }
+
+        async init() {
+          await this.loadFromStorage();
+        }
+
+        createPlaylist(name) {
+          const playlist = {
+            id: generateId(),
+            name,
+            tracks: [],
+            files: new Map(),
+            playedIndices: new Set(),
+          };
+          this.playlists.push(playlist);
+          this.saveToStorage();
+          return playlist;
+        }
+
+        async deletePlaylist(id) {
+          const playlist = this.playlists.find((p) => p.id === id);
+          if (playlist) {
+            const trackIds = playlist.tracks.map((t) => t.id);
+            await this.storage.deleteAudioFiles(trackIds);
+          }
+          this.playlists = this.playlists.filter((p) => p.id !== id);
+          if (this.activePlaylist?.id === id) {
+            this.activePlaylist = null;
+            this.currentIndex = -1;
+          }
+          this.saveToStorage();
+        }
+
+        renamePlaylist(id, name) {
+          const playlist = this.playlists.find((p) => p.id === id);
+          if (playlist) {
+            playlist.name = name;
+            this.saveToStorage();
+          }
+        }
+
+        setActivePlaylist(id) {
+          this.activePlaylist = this.playlists.find((p) => p.id === id) || null;
+          this.currentIndex = -1;
+          this.playHistory = [];
+          this.historyPosition = -1;
+          return this.activePlaylist;
+        }
+
+        addTracksToPlaylist(id, files) {
+          const playlist = this.playlists.find((p) => p.id === id);
+          if (!playlist) return;
+
+          let addedNewTracks = false;
+          for (const file of files) {
+            if (!isAudioFile(file.name)) continue;
+
+            const existingTrack = playlist.tracks.find((t) => t.name === file.name);
+            if (existingTrack) {
+              playlist.files.set(existingTrack.id, file);
+            } else {
+              addedNewTracks = true;
+              const trackId = generateId();
+              playlist.tracks.push({
+                id: trackId,
+                name: file.name,
+                path: file.webkitRelativePath || file.name,
+              });
+              playlist.files.set(trackId, file);
+            }
+          }
+
+          playlist.tracks.sort((a, b) => a.name.localeCompare(b.name));
+          if (addedNewTracks) {
+            playlist.playedIndices.clear();
+          }
+          this.saveToStorage();
+        }
+
+        importM3U(content, name) {
+          const playlist = this.createPlaylist(name);
+          const lines = content.split('\n');
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith('#')) {
+              const fileName = trimmed.split(/[/\\]/).pop();
+              playlist.tracks.push({
+                id: generateId(),
+                name: fileName,
+                path: trimmed,
+              });
+            }
+          }
+
+          this.saveToStorage();
+          return playlist;
+        }
+
+        getCurrentTrack() {
+          if (!this.activePlaylist || this.currentIndex < 0) return null;
+          return this.activePlaylist.tracks[this.currentIndex];
+        }
+
+        getTrackFile(trackId) {
+          if (!this.activePlaylist) return null;
+          return this.activePlaylist.files.get(trackId) || null;
+        }
+
+        async loadTrackFile(trackId) {
+          if (!this.activePlaylist) return null;
+
+          // Check if already loaded in memory
+          let file = this.activePlaylist.files.get(trackId);
+          if (file) return file;
+
+          // Try to load from OPFS
+          const track = this.activePlaylist.tracks.find((t) => t.id === trackId);
+          if (!track) return null;
+
+          file = await this.storage.loadAudioFile(trackId, track.name);
+          if (file) {
+            this.activePlaylist.files.set(trackId, file);
+          }
+          return file;
+        }
+
+        async saveTrackFile(trackId, file) {
+          await this.storage.saveAudioFile(trackId, file);
+        }
+
+        playIndex(index) {
+          if (!this.activePlaylist) return null;
+          if (index >= 0 && index < this.activePlaylist.tracks.length) {
+            // Add current track to history before switching
+            if (this.currentIndex >= 0) {
+              this.playHistory = this.playHistory.slice(0, this.historyPosition + 1);
+              this.playHistory.push(this.currentIndex);
+              this.historyPosition = this.playHistory.length - 1;
+            }
+            this.currentIndex = index;
+            return this.getCurrentTrack();
+          }
+          return null;
+        }
+
+        next(shuffle = false, loop = false) {
+          if (!this.activePlaylist) return null;
+          const tracks = this.activePlaylist.tracks;
+          if (tracks.length === 0) return null;
+
+          const prevIndex = this.currentIndex;
+          const playedIndices = this.activePlaylist.playedIndices;
+
+          // Get unplayed indices
+          let availableIndices = [];
+          for (const [i] of tracks.entries()) {
+            if (!playedIndices.has(i)) availableIndices.push(i);
+          }
+
+          // If all tracks have been played
+          if (availableIndices.length === 0) {
+            if (loop) {
+              playedIndices.clear();
+              for (const [i] of tracks.entries()) {
+                availableIndices.push(i);
+              }
+            } else {
+              return null;
+            }
+          }
+
+          // Select next track
+          if (shuffle) {
+            this.currentIndex =
+              availableIndices[Math.floor(Math.random() * availableIndices.length)];
+          } else {
+            // Sequential: find the first available index > currentIndex
+            let nextIndex = -1;
+            for (const idx of availableIndices) {
+              if (idx > this.currentIndex) {
+                nextIndex = idx;
+                break;
+              }
+            }
+            if (nextIndex === -1) {
+              nextIndex = availableIndices[0];
+            }
+            this.currentIndex = nextIndex;
+          }
+
+          // Add to play history (for prev() navigation)
+          if (prevIndex >= 0) {
+            this.playHistory = this.playHistory.slice(0, this.historyPosition + 1);
+            this.playHistory.push(prevIndex);
+            this.historyPosition = this.playHistory.length - 1;
+          }
+
+          return this.getCurrentTrack();
+        }
+
+        prev() {
+          if (!this.activePlaylist) return null;
+
+          // Use play history if available
+          if (this.historyPosition >= 0 && this.playHistory.length > 0) {
+            this.currentIndex = this.playHistory[this.historyPosition];
+            this.historyPosition--;
+            return this.getCurrentTrack();
+          }
+
+          // Fallback to sequential prev
+          if (this.currentIndex > 0) {
+            this.currentIndex--;
+            return this.getCurrentTrack();
+          }
+          return null;
+        }
+
+        markCurrentAsPlayed() {
+          if (!this.activePlaylist || this.currentIndex < 0) return;
+          this.activePlaylist.playedIndices.add(this.currentIndex);
+          this.saveToStorage();
+        }
+
+        getFirstUnplayedIndex(resetIfAllPlayed = false) {
+          if (!this.activePlaylist) return 0;
+          const tracks = this.activePlaylist.tracks;
+          const playedIndices = this.activePlaylist.playedIndices;
+
+          for (const [i] of tracks.entries()) {
+            if (!playedIndices.has(i)) return i;
+          }
+
+          if (resetIfAllPlayed) {
+            playedIndices.clear();
+            this.saveToStorage();
+            return 0;
+          }
+          return -1;
+        }
+
+        getRandomUnplayedIndex(resetIfAllPlayed = false) {
+          if (!this.activePlaylist) return 0;
+          const tracks = this.activePlaylist.tracks;
+          const playedIndices = this.activePlaylist.playedIndices;
+
+          const unplayed = [];
+          for (const [i] of tracks.entries()) {
+            if (!playedIndices.has(i)) unplayed.push(i);
+          }
+
+          if (unplayed.length === 0) {
+            if (resetIfAllPlayed) {
+              playedIndices.clear();
+              this.saveToStorage();
+              return Math.floor(Math.random() * tracks.length);
+            }
+            return -1;
+          }
+
+          return unplayed[Math.floor(Math.random() * unplayed.length)];
+        }
+
+        findTrackByName(name) {
+          if (!this.activePlaylist) return -1;
+          const lowerName = name.toLowerCase();
+          return this.activePlaylist.tracks.findIndex((t) =>
+            t.name.toLowerCase().includes(lowerName)
+          );
+        }
+
+        saveToStorage() {
+          const data = this.playlists.map((p) => ({
+            id: p.id,
+            name: p.name,
+            tracks: p.tracks,
+            playedIndices: Array.from(p.playedIndices),
+          }));
+          this.storage.save('playlists', data);
+        }
+
+        async loadFromStorage() {
+          try {
+            const data = await this.storage.load('playlists');
+            if (data) {
+              this.playlists = data.map((p) => ({
+                id: p.id,
+                name: p.name,
+                tracks: p.tracks || [],
+                files: new Map(),
+                playedIndices: new Set(p.playedIndices || []),
+              }));
+            }
+          } catch {
+            this.playlists = [];
+          }
+        }
+
+        async exportData(options = {}) {
+          const { includeAudio = false, globalSettings = {} } = options;
+
+          let audioMap = new Map();
+          if (includeAudio) {
+            audioMap = await this.storage.getAllAudioFiles();
+          }
+
+          const playlists = [];
+          for (const p of this.playlists) {
+            const tracks = [];
+            for (const track of p.tracks) {
+              const trackData = { ...track };
+              if (includeAudio) {
+                const audioFile = audioMap.get(track.id);
+                if (audioFile && audioFile.blob) {
+                  const base64 = await this._blobToBase64(audioFile.blob);
+                  trackData.audioData = base64;
+                  trackData.audioType = audioFile.type;
+                }
+              }
+              tracks.push(trackData);
+            }
+            playlists.push({
+              id: p.id,
+              name: p.name,
+              tracks,
+            });
+          }
+
+          const data = {
+            version: 2,
+            exportedAt: new Date().toISOString(),
+            settings: globalSettings,
+            playlists,
+          };
+          return JSON.stringify(data, null, 2);
+        }
+
+        _blobToBase64(blob) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        }
+
+        async exportDataBinary(options = {}) {
+          const { globalSettings = {}, onProgress = null } = options;
+
+          const audioMap = await this.storage.getAllAudioFiles();
+
+          const playlists = [];
+          const audioEntries = [];
+
+          for (const p of this.playlists) {
+            const tracks = [];
+            for (const track of p.tracks) {
+              const trackData = { ...track };
+              const audioFile = audioMap.get(track.id);
+              if (audioFile && audioFile.blob) {
+                trackData.hasAudio = true;
+                audioEntries.push({
+                  id: track.id,
+                  type: audioFile.type || 'audio/mpeg',
+                  blob: audioFile.blob,
+                });
+              }
+              tracks.push(trackData);
+            }
+            playlists.push({
+              id: p.id,
+              name: p.name,
+              tracks,
+            });
+          }
+
+          const manifest = {
+            version: 2,
+            format: 'plb',
+            exportedAt: new Date().toISOString(),
+            settings: globalSettings,
+            playlists,
+            audioCount: audioEntries.length,
+          };
+          const manifestJson = JSON.stringify(manifest);
+          const manifestBytes = new TextEncoder().encode(manifestJson);
+
+          const blobParts = [];
+
+          const header = new ArrayBuffer(8);
+          const headerView = new DataView(header);
+          headerView.setUint8(0, 0x50); // P
+          headerView.setUint8(1, 0x4c); // L
+          headerView.setUint8(2, 0x42); // B
+          headerView.setUint8(3, 0x31); // 1
+          headerView.setUint32(4, manifestBytes.length, true);
+          blobParts.push(header);
+
+          blobParts.push(manifestBytes);
+
+          let processed = 0;
+          for (const entry of audioEntries) {
+            const idBytes = new TextEncoder().encode(entry.id);
+            const typeBytes = new TextEncoder().encode(entry.type);
+            const audioArrayBuffer = await entry.blob.arrayBuffer();
+
+            const entryHeader = new ArrayBuffer(2 + idBytes.length + 1 + typeBytes.length + 4);
+            const view = new DataView(entryHeader);
+            let offset = 0;
+
+            view.setUint16(offset, idBytes.length, true);
+            offset += 2;
+            new Uint8Array(entryHeader, offset, idBytes.length).set(idBytes);
+            offset += idBytes.length;
+
+            view.setUint8(offset, typeBytes.length);
+            offset += 1;
+            new Uint8Array(entryHeader, offset, typeBytes.length).set(typeBytes);
+            offset += typeBytes.length;
+
+            view.setUint32(offset, audioArrayBuffer.byteLength, true);
+
+            blobParts.push(entryHeader);
+            blobParts.push(audioArrayBuffer);
+
+            processed++;
+            if (onProgress) onProgress(processed, audioEntries.length);
+          }
+
+          return new Blob(blobParts, { type: 'application/octet-stream' });
+        }
+
+        async importData(jsonString) {
+          try {
+            const data = JSON.parse(jsonString);
+            if (!data.playlists) throw new Error('Invalid format');
+
+            for (const p of data.playlists) {
+              const tracksWithoutAudio = [];
+              for (const track of p.tracks) {
+                const { audioData, audioType, ...trackData } = track;
+                tracksWithoutAudio.push(trackData);
+
+                if (audioData) {
+                  const blob = await this._base64ToBlob(audioData, audioType);
+                  const file = new File([blob], trackData.name, { type: audioType });
+                  await this.storage.saveAudioFile(trackData.id, file);
+                }
+              }
+
+              const existing = this.playlists.find((ep) => ep.id === p.id);
+              if (existing) {
+                existing.name = p.name;
+                existing.tracks = tracksWithoutAudio;
+              } else {
+                this.playlists.push({
+                  id: p.id,
+                  name: p.name,
+                  tracks: tracksWithoutAudio,
+                  files: new Map(),
+                  playedIndices: new Set(),
+                });
+              }
+            }
+            await this.storage.flushManifest();
+            this.saveToStorage();
+            return { success: true, settings: data.settings || null };
+          } catch (e) {
+            console.error('Import failed:', e);
+            return { success: false, settings: null };
+          }
+        }
+
+        _base64ToBlob(dataUrl, type) {
+          return new Promise((resolve) => {
+            const parts = dataUrl.split(',');
+            const byteString = atob(parts[1]);
+            const arrayBuffer = new ArrayBuffer(byteString.length);
+            const uint8Array = new Uint8Array(arrayBuffer);
+            let i = 0;
+            for (const ch of byteString) {
+              uint8Array[i] = ch.charCodeAt(0);
+              i++;
+            }
+            resolve(new Blob([uint8Array], { type }));
+          });
+        }
+
+        async importDataBinaryStream(chunks, totalSize, onProgress = null) {
+          try {
+            const decoder = new TextDecoder();
+            let chunkIndex = 0;
+            let chunkOffset = 0;
+            let globalOffset = 0;
+
+            function readBytes(n) {
+              const result = new Uint8Array(n);
+              let written = 0;
+              while (written < n) {
+                const chunk = chunks[chunkIndex];
+                const available = chunk.byteLength - chunkOffset;
+                const toRead = Math.min(available, n - written);
+                result.set(chunk.subarray(chunkOffset, chunkOffset + toRead), written);
+                written += toRead;
+                chunkOffset += toRead;
+                globalOffset += toRead;
+                if (chunkOffset >= chunk.byteLength) {
+                  chunkIndex++;
+                  chunkOffset = 0;
+                }
+              }
+              return result;
+            }
+
+            function readUint8() {
+              return readBytes(1)[0];
+            }
+
+            function readUint16LE() {
+              const bytes = readBytes(2);
+              return bytes[0] | (bytes[1] << 8);
+            }
+
+            function readUint32LE() {
+              const bytes = readBytes(4);
+              return bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24) >>> 0;
+            }
+
+            const magicBytes = readBytes(4);
+            const magic = String.fromCharCode(magicBytes[0], magicBytes[1], magicBytes[2], magicBytes[3]);
+            if (magic !== 'PLB1') {
+              throw new Error('Invalid PLB format');
+            }
+
+            const manifestLen = readUint32LE();
+            const manifestBytes = readBytes(manifestLen);
+            const manifest = JSON.parse(decoder.decode(manifestBytes));
+
+            if (!manifest.playlists) throw new Error('Invalid manifest');
+
+            const audioCount = manifest.audioCount || 0;
+            let processed = 0;
+
+            while (globalOffset < totalSize) {
+              const idLen = readUint16LE();
+              const idBytes = readBytes(idLen);
+              const trackId = decoder.decode(idBytes);
+
+              const typeLen = readUint8();
+              const typeBytes = readBytes(typeLen);
+              const mimeType = decoder.decode(typeBytes);
+
+              const audioSize = readUint32LE();
+              const audioData = readBytes(audioSize);
+
+              const blob = new Blob([audioData], { type: mimeType });
+              const file = new File([blob], trackId, { type: mimeType });
+              await this.storage.saveAudioFile(trackId, file);
+
+              processed++;
+              if (onProgress) onProgress(processed, audioCount);
+            }
+
+            for (const p of manifest.playlists) {
+              const tracks = p.tracks.map((t) => {
+                const { hasAudio, ...trackData } = t;
+                return trackData;
+              });
+
+              const existing = this.playlists.find((ep) => ep.id === p.id);
+              if (existing) {
+                existing.name = p.name;
+                existing.tracks = tracks;
+              } else {
+                this.playlists.push({
+                  id: p.id,
+                  name: p.name,
+                  tracks,
+                  files: new Map(),
+                  playedIndices: new Set(),
+                });
+              }
+            }
+
+            await this.storage.flushManifest();
+            this.saveToStorage();
+            return { success: true, settings: manifest.settings || null };
+          } catch (e) {
+            console.error('Binary stream import failed:', e);
+            return { success: false };
+          }
+        }
+
+        async importDataBinary(arrayBuffer, onProgress = null) {
+          try {
+            const view = new DataView(arrayBuffer);
+            const decoder = new TextDecoder();
+
+            const magic =
+              String.fromCharCode(view.getUint8(0)) +
+              String.fromCharCode(view.getUint8(1)) +
+              String.fromCharCode(view.getUint8(2)) +
+              String.fromCharCode(view.getUint8(3));
+
+            if (magic !== 'PLB1') {
+              throw new Error('Invalid PLB format');
+            }
+
+            const manifestLen = view.getUint32(4, true);
+            const manifestBytes = new Uint8Array(arrayBuffer, 8, manifestLen);
+            const manifest = JSON.parse(decoder.decode(manifestBytes));
+
+            if (!manifest.playlists) throw new Error('Invalid manifest');
+
+            let offset = 8 + manifestLen;
+            const audioCount = manifest.audioCount || 0;
+            let processed = 0;
+
+            while (offset < arrayBuffer.byteLength) {
+              const idLen = view.getUint16(offset, true);
+              offset += 2;
+
+              const idBytes = new Uint8Array(arrayBuffer, offset, idLen);
+              const trackId = decoder.decode(idBytes);
+              offset += idLen;
+
+              const typeLen = view.getUint8(offset);
+              offset += 1;
+
+              const typeBytes = new Uint8Array(arrayBuffer, offset, typeLen);
+              const mimeType = decoder.decode(typeBytes);
+              offset += typeLen;
+
+              const audioSize = view.getUint32(offset, true);
+              offset += 4;
+
+              const audioData = new Uint8Array(arrayBuffer, offset, audioSize);
+              offset += audioSize;
+
+              const blob = new Blob([audioData], { type: mimeType });
+              const file = new File([blob], trackId, { type: mimeType });
+              await this.storage.saveAudioFile(trackId, file);
+
+              processed++;
+              if (onProgress) onProgress(processed, audioCount);
+            }
+
+            for (const p of manifest.playlists) {
+              const tracks = p.tracks.map((t) => {
+                const { hasAudio, ...trackData } = t;
+                return trackData;
+              });
+
+              const existing = this.playlists.find((ep) => ep.id === p.id);
+              if (existing) {
+                existing.name = p.name;
+                existing.tracks = tracks;
+              } else {
+                this.playlists.push({
+                  id: p.id,
+                  name: p.name,
+                  tracks,
+                  files: new Map(),
+                  playedIndices: new Set(),
+                });
+              }
+            }
+
+            await this.storage.flushManifest();
+            this.saveToStorage();
+            return { success: true, settings: manifest.settings || null };
+          } catch (e) {
+            console.error('Binary import failed:', e);
+            return { success: false, settings: null };
+          }
+        }
+      }
+
+      function tokenizeWsCommandLine(line) {
+        const tokens = [];
+        let current = '';
+        let inQuotes = false;
+        let escaping = false;
+
+        for (const ch of line) {
+          if (escaping) {
+            current += ch;
+            escaping = false;
+            continue;
+          }
+
+          if (inQuotes && ch === '\\') {
+            escaping = true;
+            continue;
+          }
+
+          if (ch === '"') {
+            inQuotes = !inQuotes;
+            continue;
+          }
+
+          if (!inQuotes && (ch === ' ' || ch === '\t')) {
+            if (current) {
+              tokens.push(current);
+              current = '';
+            }
+            continue;
+          }
+
+          current += ch;
+        }
+
+        if (current) tokens.push(current);
+        return tokens;
+      }
+
+      function parseWsCommandLine(line) {
+        const tokens = tokenizeWsCommandLine((line ?? '').trim());
+        if (tokens.length === 0) return null;
+
+        const cmd = tokens[0].toLowerCase();
+        const args = tokens.slice(1);
+
+        let immediate = false;
+        if (args.length > 0 && args[args.length - 1].toLowerCase() === 'immediate') {
+          immediate = true;
+          args.pop();
+        }
+
+        return { cmd, args, immediate };
+      }
+
+      // ==================== WEBSOCKET CONTROLLER ====================
+      class WSController {
+        constructor(engine, playlistManager, ui) {
+          this.engine = engine;
+          this.pm = playlistManager;
+          this.ui = ui;
+          this.ws = null;
+          this.connected = false;
+          this.statusInterval = null;
+          this.reconnectInterval = null;
+          this.url = null;
+          this.autoReconnect = true;
+        }
+
+        connect(url) {
+          if (this.ws) {
+            this.ws.onclose = null;
+            this.ws.onerror = null;
+            this.ws.close();
+            this.ws = null;
+          }
+          this.connected = false;
+          this.url = url;
+          this.autoReconnect = true;
+          this._doConnect();
+          this._startReconnectLoop();
+        }
+
+        _doConnect() {
+          if (this.connected || !this.url) return;
+          if (this.ws && this.ws.readyState === WebSocket.CONNECTING) return;
+
+          if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+          }
+
+          try {
+            this.ws = new WebSocket(this.url);
+
+            this.ws.onopen = () => {
+              this.connected = true;
+              this.ui.updateConnectionStatus(true);
+              this.startStatusUpdates();
+            };
+
+            this.ws.onclose = () => {
+              this.connected = false;
+              this.ws = null;
+              this.ui.updateConnectionStatus(false);
+              this.stopStatusUpdates();
+            };
+
+            this.ws.onerror = () => {
+              this.connected = false;
+              this.ui.updateConnectionStatus(false);
+            };
+
+            this.ws.onmessage = (event) => {
+              this.handleMessage(event.data);
+            };
+          } catch {
+            this.ui.updateConnectionStatus(false);
+          }
+        }
+
+        _startReconnectLoop() {
+          this._stopReconnectLoop();
+          this.reconnectInterval = setInterval(() => {
+            if (this.autoReconnect && !this.connected) {
+              this._doConnect();
+            }
+          }, 1000);
+        }
+
+        _stopReconnectLoop() {
+          if (this.reconnectInterval) {
+            clearInterval(this.reconnectInterval);
+            this.reconnectInterval = null;
+          }
+        }
+
+        disconnect() {
+          this.autoReconnect = false;
+          this._stopReconnectLoop();
+          if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+          }
+          this.connected = false;
+        }
+
+        destroy() {
+          this.autoReconnect = false;
+          this.stopStatusUpdates();
+          this._stopReconnectLoop();
+          if (this.ws) {
+            this.ws.onclose = null;
+            this.ws.onerror = null;
+            this.ws.onmessage = null;
+            this.ws.close();
+            this.ws = null;
+          }
+          this.connected = false;
+        }
+
+        handleMessage(data) {
+          const lines = data.split('\n');
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed) {
+              this.processCommand(trimmed);
+            }
+          }
+        }
+
+        processCommand(line) {
+          const parsed = parseWsCommandLine(line);
+          if (!parsed) return;
+
+          const { cmd, args, immediate } = parsed;
+
+          switch (cmd) {
+            case 'play':
+              if (this.engine.state === 'paused') {
+                this.engine.play();
+              } else if (this.pm.activePlaylist && this.pm.currentIndex >= 0) {
+                this.ui.playCurrentTrack();
+              } else if (this.pm.activePlaylist && this.pm.activePlaylist.tracks.length > 0) {
+                const startIndex = this.engine.settings.shuffle
+                  ? this.pm.getRandomUnplayedIndex(true)
+                  : this.pm.getFirstUnplayedIndex(true);
+                if (startIndex >= 0) {
+                  this.ui.playTrackAtIndex(startIndex);
+                }
+              }
+              this.sendStatus();
+              break;
+
+            case 'pause':
+              this.engine.pause();
+              break;
+
+            case 'stop':
+              this.engine.stop();
+              break;
+
+            case 'hardstop':
+              this.engine.hardStop();
+              break;
+
+            case 'next':
+              this.ui.playNext();
+              break;
+
+            case 'prev':
+              this.ui.playPrev();
+              break;
+
+            case 'seek':
+              if (args[0]) this.engine.seek(parseFloat(args[0]));
+              break;
+
+            case 'volume':
+              if (args[0]) {
+                const vol = parseFloat(args[0]);
+                this.engine.setVolume(vol);
+                this.ui.updateVolumeSlider(vol);
+              }
+              break;
+
+            case 'fadein':
+              if (args[0]) {
+                this.engine.settings.fadeIn = parseFloat(args[0]);
+                this.ui.updateFadeSliders();
+              }
+              break;
+
+            case 'fadeout':
+              if (args[0]) {
+                this.engine.settings.fadeOut = parseFloat(args[0]);
+                this.ui.updateFadeSliders();
+              }
+              break;
+
+            case 'crossfade':
+              if (args[0]) {
+                this.engine.settings.crossfade = parseFloat(args[0]);
+                this.ui.updateFadeSliders();
+              }
+              break;
+
+            case 'playindex':
+              if (args[0]) {
+                const index = parseInt(args[0], 10);
+                if (!isNaN(index)) {
+                  if (immediate) {
+                    this.ui.playTrackAtIndexImmediate(index);
+                  } else {
+                    this.ui.playTrackAtIndex(index);
+                  }
+                }
+              }
+              break;
+
+            case 'playtrack':
+              if (args.length > 0) {
+                const name = args.join(' ').trim();
+                if (!name) break;
+
+                const lowerName = name.toLowerCase();
+                let foundPlaylist = null;
+                let foundIdx = -1;
+                for (const playlist of this.pm.playlists) {
+                  const idx = playlist.tracks.findIndex((t) => t.name.toLowerCase() == lowerName);
+                  if (idx >= 0) {
+                    foundPlaylist = playlist;
+                    foundIdx = idx;
+                    break;
+                  }
+                }
+                if (foundPlaylist && foundIdx >= 0) {
+                  this.ui.activatePlaylist(foundPlaylist.id);
+                  if (immediate) {
+                    this.ui.playTrackAtIndexImmediate(foundIdx);
+                  } else {
+                    this.ui.playTrackAtIndex(foundIdx);
+                  }
+                }
+              }
+              break;
+
+            case 'loadplaylist':
+              if (args.length > 0) {
+                const name = args.join(' ').trim();
+                if (!name) break;
+
+                const playlist = this.pm.playlists.find(
+                  (p) => p.name.toLowerCase() === name.toLowerCase()
+                );
+                if (playlist) {
+                  const isSamePlaylist = this.pm.activePlaylist?.id === playlist.id;
+                  this.ui.activatePlaylist(playlist.id);
+                  if (isSamePlaylist) {
+                    this.pm.currentIndex = -1;
+                  }
+                }
+              }
+              break;
+
+            case 'playplaylist':
+              if (args.length > 0) {
+                const name = args.join(' ').trim();
+                if (!name) break;
+
+                const playlist = this.pm.playlists.find(
+                  (p) => p.name.toLowerCase() === name.toLowerCase()
+                );
+                if (playlist) {
+                  this.ui.activatePlaylist(playlist.id);
+                  const startIndex = this.engine.settings.shuffle
+                    ? this.pm.getRandomUnplayedIndex(true)
+                    : this.pm.getFirstUnplayedIndex(true);
+                  if (startIndex >= 0) {
+                    if (immediate) {
+                      this.ui.playTrackAtIndexImmediate(startIndex);
+                    } else {
+                      this.ui.playTrackAtIndex(startIndex);
+                    }
+                  }
+                }
+              }
+              break;
+
+            case 'shuffle':
+              if (args[0]) {
+                const val = parseInt(args[0], 10) === 1;
+                this.engine.settings.shuffle = val;
+                this.ui.els.shuffleToggle.checked = val;
+                this.ui.saveSettings();
+              }
+              break;
+
+            case 'loop':
+              if (args[0]) {
+                const val = parseInt(args[0], 10) === 1;
+                this.engine.settings.loop = val;
+                this.ui.els.loopToggle.checked = val;
+                this.ui.saveSettings();
+              }
+              break;
+
+            case 'getstatus':
+              this.sendStatus();
+              break;
+          }
+        }
+
+        send(message) {
+          if (this.ws && this.connected && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(message);
+          }
+        }
+
+        sendStatus() {
+          const track = this.pm.getCurrentTrack();
+          const playlist = this.pm.activePlaylist;
+
+          const state = this.engine.state;
+          const time = this.engine.getCurrentTime().toFixed(2);
+          const duration = this.engine.getDuration().toFixed(2);
+          const index = this.pm.currentIndex;
+          const total = playlist ? playlist.tracks.length : 0;
+          const trackName = track ? `"${track.name}"` : '""';
+          const playlistName = playlist ? `"${playlist.name}"` : '""';
+
+          this.send(
+            `status ${state} ${time} ${duration} ${index} ${total} ${trackName} ${playlistName}`
+          );
+        }
+
+        sendEvent(type, data = '') {
+          this.send(`${type} ${data}`.trim());
+        }
+
+        startStatusUpdates() {
+          this.stopStatusUpdates();
+          this.statusInterval = setInterval(() => {
+            if (this.engine.state === 'playing') {
+              this.sendStatus();
+            }
+          }, 250);
+        }
+
+        stopStatusUpdates() {
+          if (this.statusInterval) {
+            clearInterval(this.statusInterval);
+            this.statusInterval = null;
+          }
+        }
+      }
+
+      // ==================== VISUALIZER ====================
+      class Visualizer {
+        constructor(canvas, engine) {
+          this.canvas = canvas;
+          this.ctx = canvas.getContext('2d');
+          this.engine = engine;
+          this.animationId = null;
+          this.resize();
+          window.addEventListener('resize', () => this.resize());
+        }
+
+        resize() {
+          const dpr = window.devicePixelRatio || 1;
+          this.canvas.width = Math.max(1, Math.floor(this.canvas.offsetWidth * dpr));
+          this.canvas.height = Math.max(1, Math.floor(this.canvas.offsetHeight * dpr));
+          this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        start() {
+          if (this.animationId) return;
+          this.draw();
+        }
+
+        stop() {
+          if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+          }
+        }
+
+        draw() {
+          const width = this.canvas.offsetWidth;
+          const height = this.canvas.offsetHeight;
+
+          this.ctx.clearRect(0, 0, width, height);
+
+          const data = this.engine.getAnalyserData();
+          const barCount = VISUALIZER_BAR_INDICES.length;
+          const barWidth = width / barCount;
+          const step = Math.floor(data.length / barCount);
+
+          const gradient = this.ctx.createLinearGradient(0, height, 0, 0);
+          gradient.addColorStop(0, 'rgba(45, 212, 191, 0.1)');
+          gradient.addColorStop(0.5, 'rgba(45, 212, 191, 0.25)');
+          gradient.addColorStop(1, 'rgba(232, 124, 63, 0.4)');
+
+          this.ctx.fillStyle = gradient;
+
+          for (const i of VISUALIZER_BAR_INDICES) {
+            const value = data[i * step] / 255;
+            const barHeight = value * height * 0.8;
+            const x = i * barWidth;
+            const y = height - barHeight;
+
+            this.ctx.beginPath();
+            this.ctx.roundRect(x + 2, y, barWidth - 4, barHeight, 2);
+            this.ctx.fill();
+          }
+
+          this.animationId = requestAnimationFrame(() => this.draw());
+        }
+      }
+
+      // ==================== BACKGROUND WORK QUEUE ====================
+      class WorkQueue {
+        constructor() {
+          this._chain = Promise.resolve();
+          this._queuedCount = 0;
+          this._activeLabel = '';
+          this._latestByKey = new Map();
+          this._keysEnqueued = new Set();
+        }
+
+        getQueuedCount() {
+          return this._queuedCount;
+        }
+
+        getActiveLabel() {
+          return this._activeLabel;
+        }
+
+        enqueue(label, jobFn) {
+          this._queuedCount++;
+
+          const queue = this;
+
+          function runJob() {
+            queue._queuedCount = Math.max(0, queue._queuedCount - 1);
+            queue._activeLabel = label;
+
+            function clearActive() {
+              queue._activeLabel = '';
+            }
+
+            function logError(err) {
+              console.error('WorkQueue job failed:', label, err);
+            }
+
+            return Promise.resolve().then(jobFn).catch(logError).finally(clearActive);
+          }
+
+          // Continue even if the chain is already rejected
+          this._chain = this._chain.then(runJob, runJob);
+          return this._chain;
+        }
+
+        enqueueLatest(key, label, jobFn) {
+          this._latestByKey.set(key, { label, jobFn });
+          if (this._keysEnqueued.has(key)) return this._chain;
+
+          this._keysEnqueued.add(key);
+          this._queuedCount++;
+
+          const queue = this;
+
+          async function runLatestForKey() {
+            queue._queuedCount = Math.max(0, queue._queuedCount - 1);
+            try {
+              while (true) {
+                const entry = queue._latestByKey.get(key);
+                if (!entry) break;
+                queue._latestByKey.delete(key);
+
+                queue._activeLabel = entry.label;
+                try {
+                  await entry.jobFn();
+                } catch (err) {
+                  console.error('WorkQueue job failed:', entry.label, err);
+                } finally {
+                  queue._activeLabel = '';
+                }
+              }
+            } finally {
+              queue._keysEnqueued.delete(key);
+            }
+          }
+
+          // Continue even if the chain is already rejected
+          this._chain = this._chain.then(runLatestForKey, runLatestForKey);
+          return this._chain;
+        }
+      }
+
+      // ==================== UI CONTROLLER ====================
+      class UIController {
+        constructor() {
+          this.storage = new Storage();
+          this.engine = new AudioEngine();
+          this.pm = new PlaylistManager(this.storage);
+          this.ws = null;
+          this.visualizer = null;
+          this.viewingPlaylistId = null;
+          this.trimEditor = new TrimEditor();
+          this._initialSettings = null;
+          this._destroyed = false;
+          this._progressInterval = null;
+          this._workQueue = new WorkQueue();
+          this._recalcQueueKey = 'recalculateAllGains';
+
+          this.cacheElements();
+          this.bindEvents();
+          this.setupTeardown();
+          this.initAsync();
+        }
+        setupTeardown() {
+          window.addEventListener('pagehide', () => this.destroy());
+          window.addEventListener('beforeunload', () => this.destroy());
+        }
+
+        destroy() {
+          if (this._destroyed) return;
+          this._destroyed = true;
+
+          if (this._progressInterval) {
+            clearInterval(this._progressInterval);
+            this._progressInterval = null;
+          }
+
+          this.ws?.destroy?.();
+          this.visualizer?.stop?.();
+          this.engine?.destroy?.();
+        }
+
+        getViewingPlaylist() {
+          return this.pm.playlists.find((p) => p.id === this.viewingPlaylistId) || null;
+        }
+
+        async initAsync() {
+          try {
+            this._initialSettings = await this.pm.storage.loadSettings();
+          } catch {
+            this._initialSettings = null;
+          }
+
+          this.applySettings(this._initialSettings, { persist: false });
+
+          // Start WebSocket connection immediately (don't wait for playlists)
+          this.ws = new WSController(this.engine, this.pm, this);
+          this.ws.connect(this.els.wsUrl.value);
+
+          // Load playlists in parallel
+          await this.pm.init();
+
+          await this.init();
+        }
+
+        cacheElements() {
+          this.els = {
+            playlistList: document.getElementById('playlistList'),
+            tracklistBody: document.getElementById('tracklistBody'),
+            trackTitle: document.getElementById('trackTitle'),
+            trackStatus: document.getElementById('trackStatus'),
+            trackPlaylist: document.getElementById('trackPlaylist'),
+            trackGain: document.getElementById('trackGain'),
+            progressBar: document.getElementById('progressBar'),
+            progressFill: document.getElementById('progressFill'),
+            currentTime: document.getElementById('currentTime'),
+            duration: document.getElementById('duration'),
+            playBtn: document.getElementById('playBtn'),
+            stopBtn: document.getElementById('stopBtn'),
+            hardStopBtn: document.getElementById('hardStopBtn'),
+            prevBtn: document.getElementById('prevBtn'),
+            nextBtn: document.getElementById('nextBtn'),
+            volumeSlider: document.getElementById('volumeSlider'),
+            volumeValue: document.getElementById('volumeValue'),
+            fadeInSlider: document.getElementById('fadeInSlider'),
+            fadeInValue: document.getElementById('fadeInValue'),
+            fadeOutSlider: document.getElementById('fadeOutSlider'),
+            fadeOutValue: document.getElementById('fadeOutValue'),
+            crossfadeSlider: document.getElementById('crossfadeSlider'),
+            crossfadeValue: document.getElementById('crossfadeValue'),
+            stopFadeSlider: document.getElementById('stopFadeSlider'),
+            stopFadeValue: document.getElementById('stopFadeValue'),
+            shuffleToggle: document.getElementById('shuffleToggle'),
+            loopToggle: document.getElementById('loopToggle'),
+            normalizeToggle: document.getElementById('normalizeToggle'),
+            targetLoudnessSlider: document.getElementById('targetLoudnessSlider'),
+            targetLoudnessValue: document.getElementById('targetLoudnessValue'),
+            statusDot: document.getElementById('statusDot'),
+            statusText: document.getElementById('statusText'),
+            wsUrl: document.getElementById('wsUrl'),
+            folderInput: document.getElementById('folderInput'),
+            m3uInput: document.getElementById('m3uInput'),
+            backupInput: document.getElementById('backupInput'),
+            importFolderBtn: document.getElementById('importFolderBtn'),
+            importM3uBtn: document.getElementById('importM3uBtn'),
+            exportBtn: document.getElementById('exportBtn'),
+            importBackupBtn: document.getElementById('importBackupBtn'),
+            modalOverlay: document.getElementById('modalOverlay'),
+            modalTitle: document.getElementById('modalTitle'),
+            modalInput: document.getElementById('modalInput'),
+            modalCancel: document.getElementById('modalCancel'),
+            modalConfirm: document.getElementById('modalConfirm'),
+            exportModalOverlay: document.getElementById('exportModalOverlay'),
+            exportIncludeAudio: document.getElementById('exportIncludeAudio'),
+            exportWarning: document.getElementById('exportWarning'),
+            exportModalCancel: document.getElementById('exportModalCancel'),
+            exportModalConfirm: document.getElementById('exportModalConfirm'),
+            visualizer: document.getElementById('visualizer'),
+            settingsToggle: document.getElementById('settingsToggle'),
+            settingsPanel: document.querySelector('.settings'),
+            app: document.querySelector('.app'),
+          };
+        }
+
+        enableCustomSliderValue(slider, valueEl, options) {
+          const { min = 0, max = 100, step = 1, suffix = '', onUpdate } = options;
+
+          function showInput() {
+            const originalVal = parseFloat(slider.value);
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = originalVal;
+            input.min = min;
+            input.max = max;
+            input.step = step;
+            input.className = 'custom-value-input';
+            input.style.cssText = `
+              width: 60px;
+              padding: 2px 4px;
+              font-size: 12px;
+              background: var(--bg-tertiary);
+              border: 1px solid var(--accent);
+              border-radius: 4px;
+              color: var(--text-primary);
+              text-align: center;
+            `;
+
+            valueEl.style.display = 'none';
+            valueEl.parentNode.insertBefore(input, valueEl.nextSibling);
+            input.focus();
+            input.select();
+
+            function commit() {
+              let val = parseFloat(input.value);
+              if (isNaN(val)) val = originalVal;
+              val = Math.max(min, Math.min(max, val));
+              slider.value = val;
+              valueEl.textContent = `${val}${suffix}`;
+              valueEl.style.display = '';
+              input.remove();
+              if (val !== originalVal) {
+                onUpdate(val);
+              }
+            }
+
+            input.addEventListener('blur', commit);
+            input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') commit();
+              if (e.key === 'Escape') {
+                valueEl.style.display = '';
+                input.remove();
+              }
+            });
+          }
+
+          slider.addEventListener('dblclick', showInput);
+          valueEl.addEventListener('dblclick', showInput);
+          valueEl.style.cursor = 'pointer';
+        }
+
+        bindEvents() {
+          this.els.playBtn.addEventListener('click', () => this.togglePlay());
+          this.els.stopBtn.addEventListener('click', () => this.handleStopClick());
+          this.els.hardStopBtn.addEventListener('click', () => this.handleHardStopClick());
+          this.els.prevBtn.addEventListener('click', () => this.playPrev());
+          this.els.nextBtn.addEventListener('click', () => this.playNext());
+
+          this.els.playlistList.addEventListener('click', (e) => this.handlePlaylistListClick(e));
+          this.els.tracklistBody.addEventListener('click', (e) => this.handleTracklistClick(e));
+
+          this.els.progressBar.addEventListener('mousedown', (e) =>
+            this.handleProgressMouseDown(e)
+          );
+          document.addEventListener('mousemove', (e) => this.handleDocumentMouseMove(e));
+          document.addEventListener('mouseup', () => this.handleDocumentMouseUp());
+
+          this.els.progressBar.addEventListener(
+            'touchstart',
+            (e) => this.handleProgressTouchStart(e),
+            { passive: true }
+          );
+          document.addEventListener('touchmove', (e) => this.handleDocumentTouchMove(e), {
+            passive: true,
+          });
+          document.addEventListener('touchend', () => this.handleDocumentTouchEnd());
+
+          this.els.volumeSlider.addEventListener('input', (e) => this.handleVolumeInput(e));
+          this.enableCustomSliderValue(this.els.volumeSlider, this.els.volumeValue, {
+            min: 0,
+            max: 100,
+            step: 1,
+            suffix: '%',
+            onUpdate: (val) => this.handleVolumeUpdate(val),
+          });
+
+          this.els.fadeInSlider.addEventListener('input', (e) => this.handleFadeInInput(e));
+          this.enableCustomSliderValue(this.els.fadeInSlider, this.els.fadeInValue, {
+            min: 0,
+            max: 30,
+            step: 0.1,
+            suffix: 's',
+            onUpdate: (val) => this.handleFadeInUpdate(val),
+          });
+
+          this.els.fadeOutSlider.addEventListener('input', (e) => this.handleFadeOutInput(e));
+          this.enableCustomSliderValue(this.els.fadeOutSlider, this.els.fadeOutValue, {
+            min: 0,
+            max: 30,
+            step: 0.1,
+            suffix: 's',
+            onUpdate: (val) => this.handleFadeOutUpdate(val),
+          });
+
+          this.els.crossfadeSlider.addEventListener('input', (e) => this.handleCrossfadeInput(e));
+          this.enableCustomSliderValue(this.els.crossfadeSlider, this.els.crossfadeValue, {
+            min: 0,
+            max: 30,
+            step: 0.1,
+            suffix: 's left',
+            onUpdate: (val) => this.handleCrossfadeUpdate(val),
+          });
+
+          this.els.stopFadeSlider.addEventListener('input', (e) => this.handleStopFadeInput(e));
+          this.enableCustomSliderValue(this.els.stopFadeSlider, this.els.stopFadeValue, {
+            min: 0,
+            max: 30,
+            step: 0.1,
+            suffix: 's',
+            onUpdate: (val) => this.handleStopFadeUpdate(val),
+          });
+
+          this.els.shuffleToggle.addEventListener('change', (e) =>
+            this.handleShuffleToggleChange(e)
+          );
+
+          this.els.loopToggle.addEventListener('change', (e) => this.handleLoopToggleChange(e));
+
+          this.els.normalizeToggle.addEventListener('change', (e) =>
+            this.handleNormalizeToggleChange(e)
+          );
+
+          this._targetLoudnessDebounce = null;
+          this._lastTargetLoudness = this.engine.settings.targetLoudness;
+
+          this.els.targetLoudnessSlider.addEventListener('input', (e) =>
+            this.handleTargetLoudnessInput(e)
+          );
+          this.enableCustomSliderValue(
+            this.els.targetLoudnessSlider,
+            this.els.targetLoudnessValue,
+            {
+              min: -30,
+              max: 0,
+              step: 1,
+              suffix: ' dB',
+              onUpdate: (val) => this.handleTargetLoudnessUpdate(val),
+            }
+          );
+
+          this.els.wsUrl.addEventListener('change', () => this.handleWsUrlChange());
+
+          this.els.importFolderBtn.addEventListener('click', () => this.handleImportFolderClick());
+          this.els.folderInput.addEventListener('change', (e) => this.handleFolderInputChange(e));
+          this.els.importM3uBtn.addEventListener('click', () => this.handleImportM3uClick());
+
+          this.els.m3uInput.addEventListener('change', (e) => this.handleM3uInputChange(e));
+
+          this.els.exportBtn.addEventListener('click', () => this.handleExportClick());
+          this.els.importBackupBtn.addEventListener('click', () => this.handleImportBackupClick());
+          this.els.backupInput.addEventListener('change', (e) => this.handleBackupInputChange(e));
+
+          this.els.exportIncludeAudio.addEventListener('change', (e) =>
+            this.handleExportIncludeAudioChange(e)
+          );
+          this.els.exportModalCancel.addEventListener('click', () =>
+            this.handleExportModalCancelClick()
+          );
+          this.els.exportModalConfirm.addEventListener('click', () =>
+            this.handleExportModalConfirmClick()
+          );
+          this.els.exportModalOverlay.addEventListener('click', (e) =>
+            this.handleExportModalOverlayClick(e)
+          );
+
+          this.els.modalCancel.addEventListener('click', () => this.handleModalCancelClick());
+          this.els.modalOverlay.addEventListener('click', (e) => this.handleModalOverlayClick(e));
+
+          this.engine.onTrackEnd = () => this.handleEngineTrackEnd();
+          this.engine.onCrossfadeStart = () => this.handleEngineCrossfadeStart();
+          this.engine.onStateChange = (state) => this.handleEngineStateChange(state);
+
+          this.els.settingsToggle.addEventListener('click', () => this.handleSettingsToggleClick());
+
+          document.addEventListener('keydown', (e) => this.handleDocumentKeyDown(e));
+        }
+
+        toggleSettings() {
+          const shouldOpen = this.els.settingsPanel.classList.contains('closed');
+          this.setSettingsDrawerOpen(shouldOpen);
+          this.saveSettings();
+        }
+
+        async init() {
+          this.visualizer = new Visualizer(this.els.visualizer, this.engine);
+          this.visualizer.start();
+
+          this.renderPlaylists();
+
+          this._progressInterval = setInterval(() => this.handleProgressTick(), 100);
+        }
+
+        renderPlaylists() {
+          this.els.playlistList.innerHTML = '';
+
+          for (const playlist of this.pm.playlists) {
+            const item = document.createElement('div');
+            item.className = 'playlist-item';
+            item.dataset.playlistId = playlist.id;
+            if (this.viewingPlaylistId === playlist.id) {
+              item.classList.add('viewing');
+            }
+            if (this.pm.activePlaylist?.id === playlist.id) {
+              item.classList.add('playing');
+            }
+
+            const isPlaying = this.pm.activePlaylist?.id === playlist.id;
+            const playingIndicator = isPlaying ? '▶ ' : '';
+            item.innerHTML = `
+            <span class="name">${playingIndicator}${playlist.name} <small style="opacity:0.5">(${
+              playlist.tracks.length
+            })</small></span>
+            <span class="playlist-actions">
+              <button class="playlist-btn play-playlist-btn" title="Play this playlist" style="${
+                isPlaying ? 'opacity:0.3' : ''
+              }">▶</button>
+              <button class="playlist-btn rename-btn" title="Rename">✎</button>
+              <button class="playlist-btn delete-btn" title="Delete">×</button>
+            </span>
+          `;
+
+            this.els.playlistList.appendChild(item);
+          }
+        }
+
+        handlePlaylistListClick(e) {
+          const item = e.target.closest('.playlist-item');
+          if (!item || !this.els.playlistList.contains(item)) return;
+
+          const playlistId = item.dataset.playlistId;
+          if (!playlistId) return;
+
+          const playlist = this.pm.playlists.find((p) => p.id === playlistId);
+          if (!playlist) return;
+
+          if (e.target.closest('.delete-btn')) {
+            if (confirm(`Delete "${playlist.name}"?`)) {
+              this.pm.deletePlaylist(playlistId).then(() => {
+                this.renderPlaylists();
+                this.renderTracklist();
+              });
+            }
+            return;
+          }
+
+          if (e.target.closest('.rename-btn')) {
+            this.showModal('Rename playlist', playlist.name, 'Rename', (name) => {
+              if (name) {
+                this.pm.renamePlaylist(playlistId, name);
+                this.renderPlaylists();
+              }
+            });
+            return;
+          }
+
+          if (e.target.closest('.play-playlist-btn')) {
+            if (this.pm.activePlaylist?.id !== playlistId) {
+              this.activatePlaylist(playlistId);
+            }
+            if (this.pm.activePlaylist?.tracks.length > 0) {
+              const startIndex = this.engine.settings.shuffle
+                ? this.pm.getRandomUnplayedIndex(true)
+                : this.pm.getFirstUnplayedIndex(true);
+              if (startIndex >= 0) {
+                this.playTrackAtIndex(startIndex);
+              }
+            }
+            return;
+          }
+
+          if (e.target.closest('.name')) {
+            this.selectPlaylist(playlistId);
+          }
+        }
+
+        handleStopClick() {
+          this.engine.stop();
+        }
+
+        handleHardStopClick() {
+          this.engine.hardStop();
+        }
+
+        handleProgressMouseDown(e) {
+          this._seeking = true;
+          this.seek(e);
+        }
+
+        handleDocumentMouseMove(e) {
+          if (this._seeking) {
+            this.seek(e);
+          }
+        }
+
+        handleDocumentMouseUp() {
+          this._seeking = false;
+        }
+
+        handleProgressTouchStart(e) {
+          this._seeking = true;
+          this.seekTouch(e);
+        }
+
+        handleDocumentTouchMove(e) {
+          if (this._seeking) {
+            this.seekTouch(e);
+          }
+        }
+
+        handleDocumentTouchEnd() {
+          this._seeking = false;
+        }
+
+        handleVolumeInput(e) {
+          const vol = parseInt(e.target.value, 10) / 100;
+          this.engine.setVolume(vol);
+          this.els.volumeValue.textContent = `${e.target.value}%`;
+          this.ws?.sendEvent('volume', vol);
+        }
+
+        handleVolumeUpdate(val) {
+          this.engine.setVolume(val / 100);
+          this.ws?.sendEvent('volume', val / 100);
+        }
+
+        handleFadeInInput(e) {
+          this.engine.settings.fadeIn = parseFloat(e.target.value);
+          this.els.fadeInValue.textContent = `${e.target.value}s`;
+          this.saveSettings();
+          this.ws?.sendEvent('fadein', this.engine.settings.fadeIn);
+        }
+
+        handleFadeInUpdate(val) {
+          this.engine.settings.fadeIn = val;
+          this.saveSettings();
+          this.ws?.sendEvent('fadein', val);
+        }
+
+        handleFadeOutInput(e) {
+          this.engine.settings.fadeOut = parseFloat(e.target.value);
+          this.els.fadeOutValue.textContent = `${e.target.value}s`;
+          this.saveSettings();
+          this.ws?.sendEvent('fadeout', this.engine.settings.fadeOut);
+        }
+
+        handleFadeOutUpdate(val) {
+          this.engine.settings.fadeOut = val;
+          this.saveSettings();
+          this.ws?.sendEvent('fadeout', val);
+        }
+
+        handleCrossfadeInput(e) {
+          this.engine.settings.crossfade = parseFloat(e.target.value);
+          this.els.crossfadeValue.textContent = `${e.target.value}s left`;
+          this.saveSettings();
+          this.ws?.sendEvent('crossfade', this.engine.settings.crossfade);
+        }
+
+        handleCrossfadeUpdate(val) {
+          this.engine.settings.crossfade = val;
+          this.saveSettings();
+          this.ws?.sendEvent('crossfade', val);
+        }
+
+        handleStopFadeInput(e) {
+          this.engine.settings.stopFade = parseFloat(e.target.value);
+          this.els.stopFadeValue.textContent = `${e.target.value}s`;
+          this.saveSettings();
+          this.ws?.sendEvent('stopfade', this.engine.settings.stopFade);
+        }
+
+        handleStopFadeUpdate(val) {
+          this.engine.settings.stopFade = val;
+          this.saveSettings();
+          this.ws?.sendEvent('stopfade', val);
+        }
+
+        handleShuffleToggleChange(e) {
+          this.engine.settings.shuffle = e.target.checked;
+          this.saveSettings();
+          this.ws?.sendEvent('shuffle', e.target.checked ? 1 : 0);
+        }
+
+        handleLoopToggleChange(e) {
+          this.engine.settings.loop = e.target.checked;
+          this.saveSettings();
+          this.ws?.sendEvent('loop', e.target.checked ? 1 : 0);
+        }
+
+        handleNormalizeToggleChange(e) {
+          this.engine.settings.normalize = e.target.checked;
+          this.saveSettings();
+          this.ws?.sendEvent('normalize', e.target.checked ? 1 : 0);
+        }
+
+        scheduleTargetLoudnessRecalc() {
+          clearTimeout(this._targetLoudnessDebounce);
+          this._targetLoudnessDebounce = setTimeout(
+            () => this.handleTargetLoudnessDebounceFire(),
+            500
+          );
+        }
+
+        handleTargetLoudnessDebounceFire() {
+          if (this.engine.settings.targetLoudness !== this._lastTargetLoudness) {
+            this._lastTargetLoudness = this.engine.settings.targetLoudness;
+            this.recalculateAllGains();
+          }
+        }
+
+        handleTargetLoudnessInput(e) {
+          this.engine.settings.targetLoudness = parseInt(e.target.value, 10);
+          this.els.targetLoudnessValue.textContent = `${e.target.value} dB`;
+          this.saveSettings();
+          this.scheduleTargetLoudnessRecalc();
+          this.ws?.sendEvent('targetloudness', this.engine.settings.targetLoudness);
+        }
+
+        handleTargetLoudnessUpdate(val) {
+          this.engine.settings.targetLoudness = val;
+          this.saveSettings();
+          this.scheduleTargetLoudnessRecalc();
+          this.ws?.sendEvent('targetloudness', val);
+        }
+
+        handleWsUrlChange() {
+          this.ws?.connect(this.els.wsUrl.value);
+          this.saveSettings();
+        }
+
+        handleImportFolderClick() {
+          if ('showDirectoryPicker' in window) {
+            this.handleFolderPickerImport();
+          } else {
+            this.els.folderInput.click();
+          }
+        }
+
+        handleFolderInputChange(e) {
+          this.handleFolderInputImport(e);
+        }
+
+        handleImportM3uClick() {
+          this.els.m3uInput.click();
+        }
+
+        handleM3uInputChange(e) {
+          this.handleM3uImport(e);
+        }
+
+        handleExportClick() {
+          this.showExportModal();
+        }
+
+        handleImportBackupClick() {
+          this.els.backupInput.click();
+        }
+
+        handleBackupInputChange(e) {
+          this.handleBackupImport(e);
+        }
+
+        handleExportIncludeAudioChange(e) {
+          this.els.exportWarning.style.display = e.target.checked ? 'block' : 'none';
+        }
+
+        handleExportModalCancelClick() {
+          this.hideExportModal();
+        }
+
+        handleExportModalConfirmClick() {
+          this.performExport();
+        }
+
+        handleExportModalOverlayClick(e) {
+          if (e.target === this.els.exportModalOverlay) this.hideExportModal();
+        }
+
+        handleModalCancelClick() {
+          this.hideModal();
+        }
+
+        handleModalOverlayClick(e) {
+          if (e.target === this.els.modalOverlay) this.hideModal();
+        }
+
+        handleEngineTrackEnd() {
+          this.playNext();
+        }
+
+        handleEngineCrossfadeStart() {
+          this.crossfadeToNext();
+        }
+
+        handleEngineStateChange(state) {
+          this.updatePlayButton();
+          this.ws?.sendEvent('stateChanged', state);
+        }
+
+        handleSettingsToggleClick() {
+          this.toggleSettings();
+        }
+
+        handleDocumentKeyDown(e) {
+          if (e.key === 'Escape' && !this.els.settingsPanel.classList.contains('closed')) {
+            if (!this.els.modalOverlay.classList.contains('active')) {
+              this.toggleSettings();
+            }
+          }
+        }
+
+        handleProgressTick() {
+          this.updateProgress();
+        }
+
+        selectPlaylist(id) {
+          this.viewingPlaylistId = id;
+          this.renderPlaylists();
+          this.renderTracklist();
+        }
+
+        activatePlaylist(id) {
+          this.pm.setActivePlaylist(id);
+          this.viewingPlaylistId = id;
+          this.renderPlaylists();
+          this.renderTracklist();
+
+          if (this.pm.activePlaylist) {
+            this.els.trackPlaylist.textContent = this.pm.activePlaylist.name;
+            this.ws?.sendEvent(
+              'playlistLoaded',
+              `"${this.pm.activePlaylist.name}" ${this.pm.activePlaylist.tracks.length}`
+            );
+          }
+        }
+
+        renderTracklist() {
+          const playlist = this.getViewingPlaylist();
+          const isActivePlaylist = playlist && this.pm.activePlaylist?.id === playlist.id;
+
+          if (!playlist || playlist.tracks.length === 0) {
+            this.els.tracklistBody.innerHTML = `
+            <div class="empty-state">
+              <div class="icon">🎵</div>
+              <p>${playlist ? 'This playlist is empty' : 'Select or import a playlist'}</p>
+            </div>
+          `;
+            return;
+          }
+
+          this.els.tracklistBody.innerHTML = '';
+
+          for (const [i, track] of playlist.tracks.entries()) {
+            const hasFile = playlist.files.has(track.id);
+            const row = document.createElement('div');
+            row.className = 'track-row';
+            row.dataset.trackIndex = String(i);
+            if (isActivePlaylist && i === this.pm.currentIndex) {
+              row.classList.add('active');
+            }
+
+            const hasTrim = track.trimStart !== undefined || track.trimEnd !== undefined;
+            let duration = '';
+            if (track.duration) {
+              if (hasTrim) {
+                const trimStart = track.trimStart || 0;
+                const trimEnd = track.trimEnd || track.duration;
+                duration = formatTime(trimEnd - trimStart);
+              } else {
+                duration = formatTime(track.duration);
+              }
+            } else if (hasFile) {
+              duration = '—';
+            }
+
+            row.innerHTML = `
+             <span class="track-index">${String(i + 1).padStart(2, '0')}</span>
+             <span class="track-name">${track.name}</span>
+             <span class="track-duration">${duration}</span>
+             <button class="track-trim-btn ${hasTrim ? 'has-trim' : ''}" title="Trim">
+               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                 <circle cx="6" cy="6" r="3"></circle>
+                 <circle cx="6" cy="18" r="3"></circle>
+                 <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+                 <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+                 <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+               </svg>
+             </button>
+           `;
+
+            this.els.tracklistBody.appendChild(row);
+          }
+        }
+
+        handleTracklistClick(e) {
+          const row = e.target.closest('.track-row');
+          if (!row || !this.els.tracklistBody.contains(row)) return;
+
+          const viewingPlaylist = this.getViewingPlaylist();
+          if (!viewingPlaylist) return;
+
+          const index = parseInt(row.dataset.trackIndex, 10);
+          if (isNaN(index)) return;
+
+          const track = viewingPlaylist.tracks[index];
+          if (!track) return;
+
+          if (e.target.closest('.track-trim-btn')) {
+            this.openTrimEditor(track, viewingPlaylist);
+            return;
+          }
+
+          this.playTrackFromViewing(index);
+        }
+
+        async openTrimEditor(track, playlist) {
+          let file = playlist.files.get(track.id);
+          if (!file) {
+            file = await this.pm.loadTrackFile(track.id);
+            if (!file) {
+              showError('Audio file not found. Please re-import the folder.');
+              return;
+            }
+            playlist.files.set(track.id, file);
+          }
+
+          this.trimEditor.open(track, file, (updatedTrack) => {
+            this.pm.saveToStorage();
+            this.renderTracklist();
+          });
+        }
+
+        async playTrackFromViewing(index) {
+          const viewingPlaylist = this.getViewingPlaylist();
+          if (!viewingPlaylist) return;
+
+          if (this.pm.activePlaylist?.id !== viewingPlaylist.id) {
+            this.pm.setActivePlaylist(viewingPlaylist.id);
+            this.els.trackPlaylist.textContent = viewingPlaylist.name;
+          }
+
+          await this.playTrackAtIndex(index);
+          this.renderPlaylists();
+        }
+
+        async prepareAndPlayTrack(track, options = {}) {
+          const { immediate = false, silent = false, updateButton = true } = options;
+          const task = createAbortableTask((this._playControllerRef ??= { current: null }));
+
+          let file = this.pm.getTrackFile(track.id);
+          if (!file) {
+            file = await this.pm.loadTrackFile(track.id);
+            if (task.aborted) return;
+            if (!file) {
+              if (!silent) showError('Audio file not found. Please re-import the folder.');
+              return;
+            }
+            this.renderTracklist();
+          }
+
+          this.els.trackTitle.textContent = stripExtension(track.name);
+
+          if (this.engine.settings.normalize && track.gain) {
+            this.engine.trackGains.set(track.id, track.gain);
+          }
+
+          if (task.aborted) return;
+          try {
+            await this.engine.playFile(file, track.id, track.trimStart, track.trimEnd, {
+              immediate,
+            });
+          } catch (e) {
+            if (!silent) showError('Failed to load audio for playback.', e);
+            return;
+          }
+          this.pm.markCurrentAsPlayed();
+          if (updateButton) this.updatePlayButton();
+          this.renderTracklist();
+          this.ws?.sendEvent('trackChanged', `${this.pm.currentIndex} "${track.name}"`);
+        }
+
+        async playTrackAtIndex(index) {
+          if (!this.pm.activePlaylist) return;
+          const track = this.pm.playIndex(index);
+          if (!track) return;
+          await this.prepareAndPlayTrack(track);
+        }
+
+        async playTrackAtIndexImmediate(index) {
+          if (!this.pm.activePlaylist) return;
+          const track = this.pm.playIndex(index);
+          if (!track) return;
+          await this.prepareAndPlayTrack(track, { immediate: true, silent: true });
+        }
+
+        playCurrentTrack() {
+          if (this.pm.currentIndex >= 0) {
+            this.playTrackAtIndex(this.pm.currentIndex);
+          }
+        }
+
+        async playNext() {
+          const track = this.pm.next(this.engine.settings.shuffle, this.engine.settings.loop);
+          if (track) {
+            await this.prepareAndPlayTrack(track, { silent: true });
+          } else {
+            this.engine.stop();
+            this.updatePlayButton();
+          }
+        }
+
+        async playPrev() {
+          const track = this.pm.prev();
+          if (track) await this.prepareAndPlayTrack(track, { silent: true });
+        }
+
+        async crossfadeToNext() {
+          const track = this.pm.next(this.engine.settings.shuffle, this.engine.settings.loop);
+          if (track) {
+            await this.prepareAndPlayTrack(track, { silent: true, updateButton: false });
+          } else {
+            this.engine.stop();
+            this.updatePlayButton();
+          }
+        }
+
+        togglePlay() {
+          if (this.engine.state === 'playing') {
+            this.engine.pause();
+            this.ws?.sendEvent('stateChanged', 'paused');
+            this.updatePlayButton();
+            return;
+          }
+
+          if (this.engine.state === 'paused') {
+            this.engine.play();
+            this.ws?.sendEvent('stateChanged', 'playing');
+            this.updatePlayButton();
+            return;
+          }
+
+          // Stopped state - need to start playing
+          let targetPlaylist = this.pm.activePlaylist || this.getViewingPlaylist();
+
+          if (!targetPlaylist && this.pm.playlists.length > 0) {
+            targetPlaylist = this.pm.playlists[0];
+          }
+
+          if (!targetPlaylist || targetPlaylist.tracks.length === 0) {
+            return;
+          }
+
+          if (!this.pm.activePlaylist || this.pm.activePlaylist.id !== targetPlaylist.id) {
+            this.pm.setActivePlaylist(targetPlaylist.id);
+            this.viewingPlaylistId = targetPlaylist.id;
+            this.els.trackPlaylist.textContent = targetPlaylist.name;
+            this.renderPlaylists();
+          }
+
+          let startIndex = this.pm.currentIndex;
+          if (startIndex < 0) {
+            if (this.engine.settings.shuffle) {
+              startIndex = this.pm.getRandomUnplayedIndex(true);
+            } else {
+              startIndex = this.pm.getFirstUnplayedIndex(true);
+            }
+          }
+
+          if (startIndex >= 0) {
+            this.playTrackAtIndex(startIndex);
+          }
+          this.updatePlayButton();
+        }
+
+        updatePlayButton() {
+          if (this.engine.state === 'playing') {
+            this.els.playBtn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+          } else {
+            this.els.playBtn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+          }
+          this.updateGainDisplay();
+        }
+
+        updateGainDisplay() {
+          const track = this.pm.getCurrentTrack();
+          if (track?.gain && this.engine.settings.normalize) {
+            const db = (20 * Math.log10(track.gain)).toFixed(1);
+            const sign = db >= 0 ? '+' : '';
+            this.els.trackGain.textContent = `gain: ${sign}${db} dB`;
+          } else {
+            this.els.trackGain.textContent = '';
+          }
+        }
+
+        updateProgress() {
+          const current = this.engine.getCurrentTime();
+          const total = this.engine.getDuration();
+
+          if (total > 0) {
+            const percent = (current / total) * 100;
+            this.els.progressFill.style.width = `${percent}%`;
+            this.els.currentTime.textContent = formatTime(current);
+            this.els.duration.textContent = formatTime(total);
+          }
+        }
+
+        seek(e) {
+          const rect = this.els.progressBar.getBoundingClientRect();
+          const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          const time = percent * this.engine.getDuration();
+          this.engine.seek(time);
+        }
+
+        seekTouch(e) {
+          if (!e.touches || !e.touches[0]) return;
+          const rect = this.els.progressBar.getBoundingClientRect();
+          const percent = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
+          const time = percent * this.engine.getDuration();
+          this.engine.seek(time);
+        }
+
+        formatWorkQueueSuffix() {
+          const queued = this._workQueue.getQueuedCount();
+          if (!queued) return '';
+          return ` (${queued} queued)`;
+        }
+
+        async importAudioFiles(audioFiles, folderName) {
+          const ui = this;
+          const label = `Importing "${folderName}"`;
+
+          async function runImportJob() {
+            return await ui.importAudioFilesImpl(audioFiles, folderName);
+          }
+
+          return await this._workQueue.enqueue(label, runImportJob);
+        }
+
+        async importAudioFilesImpl(audioFiles, folderName) {
+          let playlist = this.pm.playlists.find((p) => p.name === folderName);
+          if (!playlist) {
+            playlist = this.pm.createPlaylist(folderName);
+          }
+
+          this.els.trackStatus.textContent = `Importing "${folderName}" (${
+            audioFiles.length
+          } files)${this.formatWorkQueueSuffix()}`;
+
+          for (const [i, file] of audioFiles.entries()) {
+            const existingTrack = playlist.tracks.find((t) => t.name === file.name);
+
+            let trackId;
+            let track;
+            if (existingTrack) {
+              trackId = existingTrack.id;
+              track = existingTrack;
+            } else {
+              trackId = generateId();
+              track = { id: trackId, name: file.name };
+              playlist.tracks.push(track);
+            }
+
+            await this.pm.saveTrackFile(trackId, file);
+            playlist.files.set(trackId, file);
+
+            if (!track.gain || !track.duration) {
+              this.els.trackStatus.textContent = `Analyzing "${folderName}" ${i + 1}/${
+                audioFiles.length
+              }: ${file.name}${this.formatWorkQueueSuffix()}`;
+              const result = await this.engine.analyzeLoudness(file, trackId);
+              track.gain = result.gain;
+              if (result.duration) track.duration = result.duration;
+            }
+          }
+
+          playlist.tracks.sort((a, b) => a.name.localeCompare(b.name));
+          await this.pm.storage.flushManifest();
+          this.pm.saveToStorage();
+          this.renderPlaylists();
+          this.selectPlaylist(playlist.id);
+
+          if (this._workQueue.getQueuedCount() === 0) {
+            this.els.trackStatus.textContent = '';
+          }
+        }
+
+        async handleFolderPickerImport() {
+          try {
+            const dirHandle = await window.showDirectoryPicker();
+            const ui = this;
+            const folderName = dirHandle.name;
+            const label = `Importing "${folderName}"`;
+
+            async function runPickerImportJob() {
+              ui.els.trackStatus.textContent = `Scanning "${folderName}"...${ui.formatWorkQueueSuffix()}`;
+
+              const files = [];
+              const scanDir = async (handle) => {
+                for await (const entry of handle.values()) {
+                  if (entry.kind === 'file' && isAudioFile(entry.name)) {
+                    files.push(await entry.getFile());
+                  } else if (entry.kind === 'directory') {
+                    await scanDir(entry);
+                  }
+                }
+              };
+
+              await scanDir(dirHandle);
+
+              await ui.importAudioFilesImpl(files, folderName);
+            }
+
+            await ui._workQueue.enqueue(label, runPickerImportJob);
+          } catch (e) {
+            if (e.name !== 'AbortError') {
+              console.error('Folder picker error:', e);
+            }
+          }
+        }
+
+        async handleFolderInputImport(e) {
+          const files = Array.from(e.target.files);
+          if (files.length === 0) return;
+
+          const folderName = files[0].webkitRelativePath.split('/')[0];
+          const audioFiles = [];
+          for (const file of files) {
+            if (isAudioFile(file.name)) audioFiles.push(file);
+          }
+
+          e.target.value = '';
+          await this.importAudioFiles(audioFiles, folderName);
+        }
+
+        handleM3uImport(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const content = event.target.result;
+            const name = file.name.replace(/\.(m3u8?|M3U8?)$/, '');
+            this.pm.importM3U(content, name);
+            this.renderPlaylists();
+          };
+          reader.readAsText(file);
+
+          e.target.value = '';
+        }
+
+        showExportModal() {
+          this.els.exportIncludeAudio.checked = false;
+          this.els.exportWarning.style.display = 'none';
+          this.els.exportModalOverlay.classList.add('active');
+        }
+
+        hideExportModal() {
+          this.els.exportModalOverlay.classList.remove('active');
+        }
+
+        async performExport() {
+          const includeAudio = this.els.exportIncludeAudio.checked;
+
+          const globalSettings = {
+            volume: this.engine.settings.volume,
+            fadeIn: this.engine.settings.fadeIn,
+            fadeOut: this.engine.settings.fadeOut,
+            crossfade: this.engine.settings.crossfade,
+            stopFade: this.engine.settings.stopFade,
+            shuffle: this.engine.settings.shuffle,
+            loop: this.engine.settings.loop,
+            normalize: this.engine.settings.normalize,
+            targetLoudness: this.engine.settings.targetLoudness,
+            wsUrl: this.els.wsUrl.value,
+          };
+
+          this.hideExportModal();
+
+          const dateSuffix = new Date().toISOString().split('T')[0];
+          let blob;
+          let filename;
+
+          if (includeAudio) {
+            this.els.trackStatus.textContent = 'Preparing backup with audio...';
+            blob = await this.pm.exportDataBinary({
+              globalSettings,
+              onProgress: (done, total) => {
+                this.els.trackStatus.textContent = `Exporting audio ${done}/${total}...`;
+              },
+            });
+            filename = `playlist-backup-${dateSuffix}.plb`;
+            this.els.trackStatus.textContent = '';
+          } else {
+            const data = await this.pm.exportData({ includeAudio: false, globalSettings });
+            blob = new Blob([data], { type: 'application/json' });
+            filename = `playlist-backup-${dateSuffix}.json`;
+          }
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+
+        async handleBackupImport(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          this.els.trackStatus.textContent = 'Importing backup...';
+
+          const isBinary = file.name.endsWith('.plb');
+          let result;
+
+          if (isBinary) {
+            const chunks = [];
+            let bytesRead = 0;
+            const stream = file.stream();
+            const reader = stream.getReader();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+              bytesRead += value.byteLength;
+            }
+            result = await this.pm.importDataBinaryStream(chunks, bytesRead, (done, total) => {
+              this.els.trackStatus.textContent = `Importing audio ${done}/${total}...`;
+            });
+          } else {
+            const text = await file.text();
+            result = await this.pm.importData(text);
+          }
+
+          if (result.success) {
+            if (result.settings) {
+              this.applyImportedSettings(result.settings);
+            }
+            this.renderPlaylists();
+            this.renderTracklist();
+            this.els.trackStatus.textContent = '';
+          } else {
+            this.els.trackStatus.textContent = '';
+            showError('Failed to import backup. Invalid file format.');
+          }
+
+          e.target.value = '';
+        }
+
+        applyImportedSettings(settings) {
+          if (settings.volume !== undefined) {
+            this.engine.settings.volume = settings.volume;
+            this.updateVolumeSlider(settings.volume);
+          }
+          if (settings.fadeIn !== undefined) {
+            this.engine.settings.fadeIn = settings.fadeIn;
+            this.els.fadeInSlider.value = settings.fadeIn;
+            this.els.fadeInValue.textContent = `${settings.fadeIn}s`;
+          }
+          if (settings.fadeOut !== undefined) {
+            this.engine.settings.fadeOut = settings.fadeOut;
+            this.els.fadeOutSlider.value = settings.fadeOut;
+            this.els.fadeOutValue.textContent = `${settings.fadeOut}s`;
+          }
+          if (settings.crossfade !== undefined) {
+            this.engine.settings.crossfade = settings.crossfade;
+            this.els.crossfadeSlider.value = settings.crossfade;
+            this.els.crossfadeValue.textContent = `${settings.crossfade}s left`;
+          }
+          if (settings.stopFade !== undefined) {
+            this.engine.settings.stopFade = settings.stopFade;
+            this.els.stopFadeSlider.value = settings.stopFade;
+            this.els.stopFadeValue.textContent = `${settings.stopFade}s`;
+          }
+          if (settings.shuffle !== undefined) {
+            this.engine.settings.shuffle = settings.shuffle;
+            this.els.shuffleToggle.checked = settings.shuffle;
+          }
+          if (settings.loop !== undefined) {
+            this.engine.settings.loop = settings.loop;
+            this.els.loopToggle.checked = settings.loop;
+          }
+          if (settings.normalize !== undefined) {
+            this.engine.settings.normalize = settings.normalize;
+            this.els.normalizeToggle.checked = settings.normalize;
+          }
+          if (settings.targetLoudness !== undefined) {
+            this.engine.settings.targetLoudness = settings.targetLoudness;
+            this.els.targetLoudnessSlider.value = settings.targetLoudness;
+            this.els.targetLoudnessValue.textContent = `${settings.targetLoudness} dB`;
+          }
+          if (settings.wsUrl !== undefined) {
+            this.els.wsUrl.value = settings.wsUrl;
+          }
+          this.saveSettings();
+        }
+
+        showModal(title, defaultValue, confirmText, onConfirm) {
+          this.els.modalTitle.textContent = title;
+          this.els.modalInput.value = defaultValue;
+          this.els.modalConfirm.textContent = confirmText;
+          this.els.modalOverlay.classList.add('active');
+          this.els.modalInput.focus();
+
+          const cleanup = () => {
+            this.els.modalConfirm.removeEventListener('click', confirmHandler);
+            this.els.modalInput.removeEventListener('keydown', keyHandler);
+            document.removeEventListener('keydown', docKeyHandler);
+            this._modalCleanup = null;
+          };
+
+          const confirmHandler = () => {
+            const value = this.els.modalInput.value.trim();
+            cleanup();
+            this.hideModal();
+            onConfirm(value);
+          };
+
+          const keyHandler = (e) => {
+            if (e.key === 'Enter') {
+              const value = this.els.modalInput.value.trim();
+              cleanup();
+              this.hideModal();
+              onConfirm(value);
+            }
+          };
+
+          const docKeyHandler = (e) => {
+            if (e.key === 'Escape') {
+              cleanup();
+              this.hideModal();
+            }
+          };
+
+          this._modalCleanup = cleanup;
+          this.els.modalConfirm.addEventListener('click', confirmHandler);
+          this.els.modalInput.addEventListener('keydown', keyHandler);
+          document.addEventListener('keydown', docKeyHandler);
+        }
+
+        hideModal() {
+          this._modalCleanup?.();
+          this.els.modalOverlay.classList.remove('active');
+        }
+
+        updateConnectionStatus(connected) {
+          this.els.statusDot.classList.toggle('connected', connected);
+          this.els.statusText.textContent = connected ? 'Connected' : 'Reconnecting...';
+        }
+
+        updateVolumeSlider(vol) {
+          this.els.volumeSlider.value = vol * 100;
+          this.els.volumeValue.textContent = `${Math.round(vol * 100)}%`;
+        }
+
+        updateFadeSliders() {
+          this.els.fadeInSlider.value = this.engine.settings.fadeIn;
+          this.els.fadeInValue.textContent = `${this.engine.settings.fadeIn}s`;
+          this.els.fadeOutSlider.value = this.engine.settings.fadeOut;
+          this.els.fadeOutValue.textContent = `${this.engine.settings.fadeOut}s`;
+          this.els.crossfadeSlider.value = this.engine.settings.crossfade;
+          this.els.crossfadeValue.textContent = `${this.engine.settings.crossfade}s left`;
+          this.els.stopFadeSlider.value = this.engine.settings.stopFade;
+          this.els.stopFadeValue.textContent = `${this.engine.settings.stopFade}s`;
+        }
+
+        async recalculateAllGains() {
+          const ui = this;
+          const targetToUse = this.engine.settings.targetLoudness;
+          const label = `Recalculating gains (${targetToUse} dB)`;
+
+          async function runRecalcJob() {
+            return await ui.recalculateAllGainsImpl();
+          }
+
+          await this._workQueue.enqueueLatest(this._recalcQueueKey, label, runRecalcJob);
+        }
+
+        async recalculateAllGainsImpl() {
+          const targetToUse = this.engine.settings.targetLoudness;
+
+          const allTracks = [];
+          for (const playlist of this.pm.playlists) {
+            for (const track of playlist.tracks) {
+              allTracks.push({ track, playlist });
+            }
+          }
+
+          if (allTracks.length === 0) return;
+
+          const newGainsByTrackId = new Map();
+          const newDurationsByTrackId = new Map();
+
+          for (const [i, trackInfo] of allTracks.entries()) {
+            if (this.engine.settings.targetLoudness !== targetToUse) return;
+
+            const { track, playlist } = trackInfo;
+            this.els.targetLoudnessValue.textContent = `${i + 1}/${allTracks.length}`;
+            this.els.trackStatus.textContent = `Recalculating (${targetToUse} dB) ${i + 1}/${
+              allTracks.length
+            }: ${track.name}${this.formatWorkQueueSuffix()}`;
+
+            let file = playlist.files.get(track.id);
+            if (!file) {
+              file = await this.pm.storage.loadAudioFile(track.id, track.name);
+              if (file) {
+                playlist.files.set(track.id, file);
+              }
+            }
+
+            if (file) {
+              const result = await this.engine.analyzeLoudness(file, track.id);
+              newGainsByTrackId.set(track.id, result.gain);
+              if (result.duration) newDurationsByTrackId.set(track.id, result.duration);
+            }
+          }
+
+          if (this.engine.settings.targetLoudness !== targetToUse) return;
+
+          this.engine.trackGains.clear();
+          for (const trackInfo of allTracks) {
+            const { track } = trackInfo;
+            delete track.gain;
+
+            const gain = newGainsByTrackId.get(track.id);
+            if (gain) {
+              track.gain = gain;
+              this.engine.trackGains.set(track.id, gain);
+            }
+
+            const dur = newDurationsByTrackId.get(track.id);
+            if (dur) track.duration = dur;
+          }
+
+          this.els.targetLoudnessValue.textContent = `${this.engine.settings.targetLoudness} dB`;
+          this.pm.saveToStorage();
+
+          if (this._workQueue.getQueuedCount() === 0) {
+            this.els.trackStatus.textContent = '';
+          }
+        }
+
+        setSettingsDrawerOpen(shouldOpen) {
+          const isClosed = !shouldOpen;
+          this.els.settingsPanel.classList.toggle('closed', isClosed);
+          this.els.app.classList.toggle('settings-closed', isClosed);
+          this.els.settingsToggle.classList.toggle('active', !isClosed);
+        }
+
+        getDefaultSettings() {
+          return {
+            volume: 1.0,
+            fadeIn: 2.0,
+            fadeOut: 3.0,
+            crossfade: 4.0,
+            stopFade: 2.0,
+            shuffle: false,
+            loop: false,
+            normalize: true,
+            targetLoudness: -12,
+            wsUrl: this.els.wsUrl.value,
+            settingsDrawerOpen: !this.els.settingsPanel.classList.contains('closed'),
+          };
+        }
+
+        normalizeSettings(raw) {
+          const defaults = this.getDefaultSettings();
+          const normalized = structuredClone(defaults);
+
+          if (raw && typeof raw === 'object') {
+            for (const key of Object.keys(defaults)) {
+              if (raw[key] !== undefined) {
+                normalized[key] = raw[key];
+              }
+            }
+          }
+
+          if (typeof normalized.volume !== 'number' || !isFinite(normalized.volume)) {
+            normalized.volume = defaults.volume;
+          }
+          normalized.volume = Math.max(0, Math.min(1, normalized.volume));
+
+          for (const key of ['fadeIn', 'fadeOut', 'crossfade', 'stopFade']) {
+            if (
+              typeof normalized[key] !== 'number' ||
+              !isFinite(normalized[key]) ||
+              normalized[key] < 0
+            ) {
+              normalized[key] = defaults[key];
+            }
+          }
+
+          if (
+            typeof normalized.targetLoudness !== 'number' ||
+            !isFinite(normalized.targetLoudness) ||
+            normalized.targetLoudness > 0 ||
+            normalized.targetLoudness < -60
+          ) {
+            normalized.targetLoudness = defaults.targetLoudness;
+          }
+
+          for (const key of ['shuffle', 'loop', 'normalize', 'settingsDrawerOpen']) {
+            normalized[key] = Boolean(normalized[key]);
+          }
+
+          if (typeof normalized.wsUrl !== 'string') {
+            normalized.wsUrl = defaults.wsUrl;
+          }
+
+          return normalized;
+        }
+
+        applySettings(rawSettings, options = {}) {
+          const { persist = false } = options;
+          const settings = this.normalizeSettings(rawSettings);
+
+          this.engine.setVolume(settings.volume);
+          this.engine.settings.fadeIn = settings.fadeIn;
+          this.engine.settings.fadeOut = settings.fadeOut;
+          this.engine.settings.crossfade = settings.crossfade;
+          this.engine.settings.stopFade = settings.stopFade;
+          this.engine.settings.shuffle = settings.shuffle;
+          this.engine.settings.loop = settings.loop;
+          this.engine.settings.normalize = settings.normalize;
+          this.engine.settings.targetLoudness = settings.targetLoudness;
+
+          this.els.wsUrl.value = settings.wsUrl;
+
+          this.updateVolumeSlider(this.engine.settings.volume);
+          this.updateFadeSliders();
+          this.els.shuffleToggle.checked = this.engine.settings.shuffle;
+          this.els.loopToggle.checked = this.engine.settings.loop;
+          this.els.normalizeToggle.checked = this.engine.settings.normalize;
+          this.els.targetLoudnessSlider.value = this.engine.settings.targetLoudness;
+          this.els.targetLoudnessValue.textContent = `${this.engine.settings.targetLoudness} dB`;
+
+          this.setSettingsDrawerOpen(settings.settingsDrawerOpen);
+
+          if (persist) {
+            this.saveSettings();
+          }
+        }
+
+        saveSettings() {
+          const settings = {
+            volume: this.engine.settings.volume,
+            fadeIn: this.engine.settings.fadeIn,
+            fadeOut: this.engine.settings.fadeOut,
+            crossfade: this.engine.settings.crossfade,
+            stopFade: this.engine.settings.stopFade,
+            shuffle: this.engine.settings.shuffle,
+            loop: this.engine.settings.loop,
+            normalize: this.engine.settings.normalize,
+            targetLoudness: this.engine.settings.targetLoudness,
+            wsUrl: this.els.wsUrl.value,
+            settingsDrawerOpen: !this.els.settingsPanel.classList.contains('closed'),
+          };
+          this.pm.storage.saveSettings(settings);
+        }
+
+        async loadSettings() {
+          try {
+            const settings = await this.pm.storage.loadSettings();
+            this.applySettings(settings, { persist: false });
+          } catch {
+            // Use defaults
+          }
+        }
+      }
+
+      // ==================== UTILITIES ====================
+      const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.webm'];
+
+      function createIndexArray(count) {
+        const indices = [];
+        for (const i of range(count)) {
+          indices.push(i);
+        }
+        return indices;
+      }
+
+      const VISUALIZER_BAR_INDICES = createIndexArray(64);
+
+      function* range(count) {
+        let i = 0;
+        while (i < count) {
+          yield i;
+          i++;
+        }
+      }
+
+      function generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+      }
+
+      function formatTime(seconds) {
+        if (!isFinite(seconds) || seconds < 0) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function formatTimePrecise(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        const ms = Math.floor((seconds % 1) * 10);
+        return `${mins}:${secs.toString().padStart(2, '0')}.${ms}`;
+      }
+
+      function isAudioFile(filename) {
+        const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
+        return AUDIO_EXTENSIONS.includes(ext);
+      }
+
+      function stripExtension(filename) {
+        return filename.replace(/\.[^/.]+$/, '');
+      }
+
+      function showError(message, details = null) {
+        console.error(message, details);
+        alert(message);
+      }
+
+      class AbortError extends Error {
+        constructor() {
+          super('Aborted');
+          this.name = 'AbortError';
+        }
+      }
+
+      function createAbortableTask(controllerRef) {
+        controllerRef.current?.abort();
+        const controller = new AbortController();
+        controllerRef.current = controller;
+        return {
+          signal: controller.signal,
+          get aborted() {
+            return controller.signal.aborted;
+          },
+          throwIfAborted() {
+            if (controller.signal.aborted) throw new AbortError();
+          },
+        };
+      }
+
+      // Initialize
+      const app = new UIController();
+    </script>
+  </body>
+</html>
+
