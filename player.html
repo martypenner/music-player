@@ -1985,9 +1985,8 @@
 
           ctx.clearRect(0, 0, width, height);
 
-          const rawBarWidth = width / this.peaks.length;
-          const barWidth = Math.max(1, rawBarWidth);
-          const barGap = rawBarWidth >= 2 ? 1 : 0;
+          const barWidth = width / this.peaks.length;
+          const barGap = barWidth >= 2 ? 1 : 0;
           const centerY = height / 2;
 
           const startRatio = this.trimStart / this.duration;
